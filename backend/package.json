@@ -1,5 +1,5 @@
 {
-  "name": "employee-management-backend",
+  "name": "employee-management-system",
   "version": "1.0.0",
   "description": "Employee Management System Backend API",
   "main": "server.js",
