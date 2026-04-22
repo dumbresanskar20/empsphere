@@ -7,7 +7,8 @@ const fs = require('fs');
 // @access  Private
 const uploadDocument = async (req, res, next) => {
   try {
-    if (!req.file) {
+    const file = req.files && req.files[0] ? req.files[0] : req.file;
+    if (!file) {
       res.status(400);
       throw new Error('No file uploaded');
     }
@@ -22,10 +23,11 @@ const uploadDocument = async (req, res, next) => {
     const document = await Document.create({
       employeeId,
       documentType,
-      filePath: req.file.filename,
-      originalName: req.file.originalname,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype,
+      filePath: file.path,
+      originalName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      fileData: fs.readFileSync(file.path)
     });
 
     res.status(201).json(document);
@@ -73,4 +75,23 @@ const deleteDocument = async (req, res, next) => {
   }
 };
 
-module.exports = { uploadDocument, getDocuments, deleteDocument };
+// @desc    View a document directly from DB
+// @route   GET /api/documents/view/:id
+// @access  Private
+const viewDocument = async (req, res, next) => {
+  try {
+    const document = await Document.findById(req.params.id);
+    if (!document || !document.fileData) {
+      res.status(404);
+      throw new Error('Document not found in database');
+    }
+
+    res.set('Content-Type', document.mimeType);
+    res.set('Content-Disposition', `inline; filename="${document.originalName}"`);
+    res.send(document.fileData);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { uploadDocument, getDocuments, deleteDocument, viewDocument };

@@ -27,6 +27,7 @@ const userSchema = new mongoose.Schema(
     profileImage: { type: String, default: '' },
     documents: [
       {
+        documentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document' },
         filename: String,
         originalName: String,
         path: String,

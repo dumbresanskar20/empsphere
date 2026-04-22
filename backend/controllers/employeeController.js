@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Document = require('../models/Document');
+const fs = require('fs');
 
 // @desc    Get my profile (employee)
 // @route   GET /api/employee/profile
@@ -68,12 +70,25 @@ const uploadDocuments = async (req, res) => {
     const documentTypes = req.body.documentTypes;
     const docTypesArray = Array.isArray(documentTypes) ? documentTypes : [documentTypes];
 
-    const newDocs = req.files.map((file, index) => ({
-      filename: file.filename,
-      originalName: file.originalname,
-      path: file.path,
-      mimetype: file.mimetype,
-      docType: docTypesArray[index] || 'Other',
+    const newDocs = await Promise.all(req.files.map(async (file, index) => {
+      const fileData = fs.readFileSync(file.path);
+      const doc = await Document.create({
+        employeeId: user._id,
+        documentType: docTypesArray[index] || 'Other',
+        filePath: file.path,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        fileData: fileData
+      });
+      return {
+        documentId: doc._id,
+        filename: file.filename,
+        originalName: file.originalname,
+        path: file.path,
+        mimetype: file.mimetype,
+        docType: docTypesArray[index] || 'Other',
+      };
     }));
 
     user.documents.push(...newDocs);

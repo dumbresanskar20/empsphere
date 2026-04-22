@@ -4,18 +4,18 @@ const documentSchema = new mongoose.Schema(
   {
     employeeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
-      required: [true, 'Employee ID is required'],
+      ref: 'User',
+      required: false,
     },
     documentType: {
       type: String,
       required: [true, 'Document type is required'],
-      enum: ['Aadhar Card', 'PAN Card', 'Passport', 'Driving License', 'Utility Bills'],
     },
-    filePath: { type: String, required: [true, 'File path is required'] },
+    filePath: { type: String },
     originalName: { type: String },
     fileSize: { type: Number },
     mimeType: { type: String },
+    fileData: { type: Buffer },
   },
   { timestamps: true }
 );

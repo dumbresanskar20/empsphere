@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const bcrypt = require('bcryptjs');
+const Document = require('../models/Document');
+const fs = require('fs');
 
 // @desc    Employee Signup
 // @route   POST /api/auth/signup
@@ -25,12 +27,24 @@ const signup = async (req, res) => {
     const documentTypes = req.body.documentTypes;
     const docTypesArray = Array.isArray(documentTypes) ? documentTypes : [documentTypes];
 
-    const documents = req.files.map((file, index) => ({
-      filename: file.filename,
-      originalName: file.originalname,
-      path: file.path,
-      mimetype: file.mimetype,
-      docType: docTypesArray[index] || 'Other',
+    const documents = await Promise.all(req.files.map(async (file, index) => {
+      const fileData = fs.readFileSync(file.path);
+      const doc = await Document.create({
+        documentType: docTypesArray[index] || 'Other',
+        filePath: file.path,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        fileData: fileData
+      });
+      return {
+        documentId: doc._id,
+        filename: file.filename,
+        originalName: file.originalname,
+        path: file.path,
+        mimetype: file.mimetype,
+        docType: docTypesArray[index] || 'Other',
+      };
     }));
 
     const user = await User.create({
@@ -46,6 +60,12 @@ const signup = async (req, res) => {
       status: 'pending',
       documents,
     });
+
+    // Update the Document models with the user ID
+    await Document.updateMany(
+      { _id: { $in: documents.map(d => d.documentId) } },
+      { $set: { employeeId: user._id } }
+    );
 
     res.status(201).json({
       message: 'Account created successfully. Awaiting admin approval.',

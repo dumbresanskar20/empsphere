@@ -1204,7 +1204,7 @@
               <span style="font-weight:600; font-size:0.85rem; color:var(--accent);">${d.docType || 'Document'}</span>
               <span style="font-size:0.9rem;">📄 ${d.originalName}</span>
             </div>
-            <a href="${d.path.startsWith('/uploads') ? d.path : '/uploads/documents/' + d.filename}" target="_blank" class="doc-link">View File</a>
+            <a href="${d.documentId ? '/api/documents/view/' + d.documentId : (d.path && d.path.startsWith('/uploads') ? d.path : '/uploads/documents/' + d.filename)}" target="_blank" class="doc-link">View File</a>
           </div>
         `).join('') : '<p style="color:var(--text2)">No documents uploaded.</p>';
 
