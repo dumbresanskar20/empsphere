@@ -1,34 +1,53 @@
 const multer = require('multer');
+const { GridFsStorage } = require('multer-gridfs-storage');
 const path = require('path');
-const fs = require('fs');
+const crypto = require('crypto');
+require('dotenv').config();
 
-// Ensure upload dirs exist
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
-
-const documentStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../uploads/documents');
-    ensureDir(dir);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  },
+// Create GridFS storage for Documents
+const documentStorage = new GridFsStorage({
+  url: process.env.MONGO_URI,
+  options: { serverSelectionTimeoutMS: 5000 },
+  file: (req, file) => {
+    return new Promise((resolve, reject) => {
+      crypto.randomBytes(16, (err, buf) => {
+        if (err) return reject(err);
+        const filename = buf.toString('hex') + path.extname(file.originalname);
+        const fileInfo = {
+          filename: filename,
+          bucketName: 'uploads',
+          metadata: {
+            originalName: file.originalname,
+            uploadDate: new Date(),
+          }
+        };
+        resolve(fileInfo);
+      });
+    });
+  }
 });
 
-const profileStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../uploads/profiles');
-    ensureDir(dir);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  },
+// Create GridFS storage for Profile Images
+const profileStorage = new GridFsStorage({
+  url: process.env.MONGO_URI,
+  options: { serverSelectionTimeoutMS: 5000 },
+  file: (req, file) => {
+    return new Promise((resolve, reject) => {
+      crypto.randomBytes(16, (err, buf) => {
+        if (err) return reject(err);
+        const filename = 'profile-' + buf.toString('hex') + path.extname(file.originalname);
+        const fileInfo = {
+          filename: filename,
+          bucketName: 'uploads',
+          metadata: {
+            originalName: file.originalname,
+            type: 'profile'
+          }
+        };
+        resolve(fileInfo);
+      });
+    });
+  }
 });
 
 const fileFilter = (req, file, cb) => {

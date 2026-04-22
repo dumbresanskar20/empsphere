@@ -2,7 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 
 dotenv.config();
 
@@ -33,6 +33,7 @@ app.use('/api/salaries', require('./routes/salaryRoutes'));
 app.use('/api/employee', require('./routes/employeeRoutes'));
 app.use('/api/departments', require('./routes/departmentRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api', require('./routes/fileRoutes')); // GridFS routes (/api/upload, /api/files)
 
 // Health check
 app.get('/api/health', (req, res) => {

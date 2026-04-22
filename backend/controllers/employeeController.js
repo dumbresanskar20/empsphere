@@ -48,7 +48,7 @@ const uploadProfileImage = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
-    user.profileImage = `/uploads/profiles/${req.file.filename}`;
+    user.profileImage = `/api/files/${req.file.filename}`;
     await user.save({ validateBeforeSave: false });
 
     res.json({ profileImage: user.profileImage, message: 'Profile image updated' });
@@ -70,26 +70,15 @@ const uploadDocuments = async (req, res) => {
     const documentTypes = req.body.documentTypes;
     const docTypesArray = Array.isArray(documentTypes) ? documentTypes : [documentTypes];
 
-    const newDocs = await Promise.all(req.files.map(async (file, index) => {
-      const fileData = fs.readFileSync(file.path);
-      const doc = await Document.create({
-        employeeId: user._id,
-        documentType: docTypesArray[index] || 'Other',
-        filePath: file.path,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        fileSize: file.size,
-        fileData: fileData
-      });
+    const newDocs = req.files.map((file, index) => {
       return {
-        documentId: doc._id,
         filename: file.filename,
         originalName: file.originalname,
-        path: file.path,
+        path: `/api/files/${file.filename}`, // GridFS streaming path
         mimetype: file.mimetype,
         docType: docTypesArray[index] || 'Other',
       };
-    }));
+    });
 
     user.documents.push(...newDocs);
     await user.save({ validateBeforeSave: false });
