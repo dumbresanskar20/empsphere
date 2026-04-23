@@ -1,137 +1,596 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Employee Portal - EmpSphere</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     :root {
-      --bg: #0a0e1a; --bg2: #0f1525; --surface: #141929; --surface2: #1a2035;
-      --border: #1f2d4a; --accent: #6366f1; --accent2: #8b5cf6;
-      --text: #e2e8f0; --text2: #94a3b8; --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+      --bg: #0a0e1a;
+      --bg2: #0f1525;
+      --surface: #141929;
+      --surface2: #1a2035;
+      --border: #1f2d4a;
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
     }
+
     :root[data-theme="light"] {
-      --bg: #f8fafc; --bg2: #f1f5f9; --surface: #ffffff; --surface2: #f1f5f9;
-      --border: #e2e8f0; --accent: #4f46e5; --accent2: #7c3aed;
-      --text: #0f172a; --text2: #475569;
+      --bg: #f8fafc;
+      --bg2: #f1f5f9;
+      --surface: #ffffff;
+      --surface2: #f1f5f9;
+      --border: #e2e8f0;
+      --accent: #4f46e5;
+      --accent2: #7c3aed;
+      --text: #0f172a;
+      --text2: #475569;
     }
-    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-    
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
     /* ── Hamburger ── */
-    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 6px; border-radius: 8px; transition: background 0.2s; background: none; border: none; }
-    .hamburger:hover { background: rgba(99,102,241,0.1); }
-    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all 0.3s; }
-    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; backdrop-filter: blur(2px); }
-    .sidebar-overlay.visible { display: block; }
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+      transition: background 0.2s;
+      background: none;
+      border: none;
+    }
+
+    .hamburger:hover {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 40;
+      backdrop-filter: blur(2px);
+    }
+
+    .sidebar-overlay.visible {
+      display: block;
+    }
 
     /* Sidebar */
-    .sidebar { width: 250px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 1.5rem 0; flex-shrink: 0; z-index: 50; transition: transform 0.3s ease; }
-    .brand { padding: 0 1.5rem 2rem; display: flex; align-items: center; gap: 0.8rem; font-size: 1.2rem; font-weight: 700; color: var(--text); }
-    .brand span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .nav-item { padding: 1rem 1.5rem; color: var(--text2); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.8rem; border-left: 3px solid transparent; white-space: nowrap; }
-    .nav-item:hover, .nav-item.active { background: rgba(99,102,241,0.1); color: var(--accent); border-left-color: var(--accent); }
-    .logout-btn { margin-top: auto; padding: 1rem 1.5rem; color: var(--danger); cursor: pointer; display: flex; align-items: center; gap: 0.8rem; }
-    .logout-btn:hover { background: rgba(239,68,68,0.1); }
+    .sidebar {
+      width: 250px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 0;
+      flex-shrink: 0;
+      z-index: 50;
+      transition: transform 0.3s ease;
+    }
+
+    .brand {
+      padding: 0 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .brand span {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-item {
+      padding: 1rem 1.5rem;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      border-left: 3px solid transparent;
+      white-space: nowrap;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    .logout-btn {
+      margin-top: auto;
+      padding: 1rem 1.5rem;
+      color: var(--danger);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
 
     /* Main Content */
-    .main-content { flex: 1; overflow-y: auto; padding: 2rem; min-width: 0; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; }
-    .header h2 { font-size: clamp(1rem, 3vw, 1.5rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-info { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-    .profile-img-small { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); cursor: pointer; }
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem;
+      min-width: 0;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      gap: 1rem;
+    }
+
+    .header h2 {
+      font-size: clamp(1rem, 3vw, 1.5rem);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+
+    .profile-img-small {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--accent);
+      cursor: pointer;
+    }
 
     /* Header profile pill */
-    .header-profile { display: flex; align-items: center; gap: 0.6rem; background: var(--surface); border: 1px solid var(--border); border-radius: 50px; padding: 0.3rem 0.8rem 0.3rem 0.3rem; cursor: pointer; transition: all 0.2s; position: relative; }
-    .header-profile:hover { border-color: var(--accent); }
-    .profile-dropdown { display: none; position: absolute; top: calc(100% + 10px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; min-width: 180px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 200; }
-    .profile-dropdown.open { display: block; animation: fadeIn 0.2s ease; }
-    .profile-dropdown-item { padding: 0.8rem 1.2rem; display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.9rem; color: var(--text); transition: background 0.2s; }
-    .profile-dropdown-item:hover { background: rgba(99,102,241,0.1); }
-    .profile-dropdown-item.danger { color: var(--danger); }
-    .profile-dropdown-item.danger:hover { background: rgba(239,68,68,0.1); }
-    .dropdown-divider { height: 1px; background: var(--border); margin: 0.2rem 0; }
-    
+    .header-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 0.3rem 0.8rem 0.3rem 0.3rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .header-profile:hover {
+      border-color: var(--accent);
+    }
+
+    .profile-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-width: 180px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      z-index: 200;
+    }
+
+    .profile-dropdown.open {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .profile-dropdown-item {
+      padding: 0.8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text);
+      transition: background 0.2s;
+    }
+
+    .profile-dropdown-item:hover {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .profile-dropdown-item.danger {
+      color: var(--danger);
+    }
+
+    .profile-dropdown-item.danger:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .dropdown-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0.2rem 0;
+    }
+
     /* Dashboard Stats */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-    .stat-card { background: var(--surface); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
-    .stat-title { color: var(--text2); font-size: 0.9rem; }
-    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--text); }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .stat-title {
+      color: var(--text2);
+      font-size: 0.9rem;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text);
+    }
 
     /* Charts Grid */
-    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
-    .chart-container { background: var(--surface); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); }
-    .chart-title { margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600; }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-container {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .chart-title {
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
 
     /* Forms & Layouts */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .table-scroll-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .card { background: var(--surface); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); margin-bottom: 1.5rem; }
-    .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text2); font-size: 0.9rem; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.8rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); outline: none; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
-    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .table-scroll-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .card {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text2);
+      font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--accent);
+    }
+
     /* Buttons */
-    .btn { padding: 0.6rem 1.2rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; color: #ffffff; }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
-    .btn-primary:hover { box-shadow: 0 4px 15px rgba(99,102,241,0.3); transform: translateY(-1px); }
-    .btn-outline { background: transparent; border: 1px solid var(--border); }
-    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      color: #ffffff;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
 
     /* Tables */
-    table { width: 100%; border-collapse: collapse; min-width: 400px; }
-    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    th { color: var(--text2); font-weight: 500; font-size: 0.9rem; }
-    tbody tr:hover { background: rgba(255,255,255,0.02); }
-    .badge { padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; text-transform: capitalize; }
-    .badge.approved { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
-    .badge.pending { background: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
-    .badge.rejected { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 400px;
+    }
+
+    th,
+    td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--text2);
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .badge.approved {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .badge.pending {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .badge.rejected {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
 
     /* Profile Photo Upload */
-    .profile-upload-zone { text-align: center; margin-bottom: 2rem; }
-    .profile-large { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); margin-bottom: 1rem; }
-    .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; }
-    .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+    .profile-upload-zone {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .profile-large {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .upload-btn-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+
+    .upload-btn-wrapper input[type=file] {
+      font-size: 100px;
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
 
     /* Sections */
-    .section { display: none; }
-    .section.active { display: block; animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
 
     /* Danger card (logout in profile) */
-    .danger-card { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
-    .danger-card h3 { color: var(--danger); margin-bottom: 0.5rem; }
-    .btn-danger-outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
-    .btn-danger-outline:hover { background: var(--danger); color: #fff; }
+    .danger-card {
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .danger-card h3 {
+      color: var(--danger);
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-danger-outline {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-danger-outline:hover {
+      background: var(--danger);
+      color: #fff;
+    }
 
     /* ── Responsive Breakpoints ── */
     @media (max-width: 900px) {
-      .charts-grid { grid-template-columns: 1fr; }
-      .charts-grid .chart-container[style*="span 2"] { grid-column: span 1 !important; }
-      .grid-2 { grid-template-columns: 1fr; }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .charts-grid .chart-container[style*="span 2"] {
+        grid-column: span 1 !important;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
     }
+
     @media (max-width: 768px) {
-      body { overflow: auto; }
-      .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.4); }
-      .sidebar.open { transform: translateX(0); }
-      .hamburger { display: flex; }
-      .main-content { padding: 1rem; }
-      .header { margin-bottom: 1.2rem; }
-      .stats-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; }
-      .stat-value { font-size: 1.4rem; }
-      .charts-grid { grid-template-columns: 1fr; gap: 1rem; }
-      .grid-2 { grid-template-columns: 1fr; }
+      body {
+        overflow: auto;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .header {
+        margin-bottom: 1.2rem;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 1rem;
+      }
+
+      .stat-value {
+        font-size: 1.4rem;
+      }
+
+      .charts-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
     }
+
     @media (max-width: 480px) {
-      .stats-grid { grid-template-columns: 1fr 1fr; }
-      .stat-card { padding: 1rem; }
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stat-card {
+        padding: 1rem;
+      }
     }
   </style>
 </head>
+
 <body>
   <!-- Sidebar overlay -->
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -157,12 +616,16 @@
         <h2 id="page-title">Welcome Back!</h2>
       </div>
       <div class="user-info">
-        <span id="emp-id-badge" class="badge" style="background: rgba(99,102,241,0.1); color: var(--accent); border: 1px solid var(--accent);">EMP000</span>
+        <span id="emp-id-badge" class="badge"
+          style="background: rgba(99,102,241,0.1); color: var(--accent); border: 1px solid var(--accent);">EMP000</span>
         <div class="header-profile" id="header-profile-btn" onclick="toggleProfileDropdown()">
-          <img src="https://via.placeholder.com/36" id="header-profile-img" class="profile-img-small" alt="Profile" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
+          <img src="https://via.placeholder.com/36" id="header-profile-img" class="profile-img-small" alt="Profile"
+            style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
           <div class="profile-dropdown" id="profile-dropdown">
-            <div class="profile-dropdown-item" onclick="switchSection('profile'); closeProfileDropdown();">👤 My Profile</div>
-            <div class="profile-dropdown-item" onclick="switchSection('settings'); closeProfileDropdown();">⚙️ Settings</div>
+            <div class="profile-dropdown-item" onclick="switchSection('profile'); closeProfileDropdown();">👤 My Profile
+            </div>
+            <div class="profile-dropdown-item" onclick="switchSection('settings'); closeProfileDropdown();">⚙️ Settings
+            </div>
             <div class="dropdown-divider"></div>
             <div class="profile-dropdown-item danger" onclick="logout()">🚪 Logout</div>
           </div>
@@ -263,9 +726,11 @@
         <!-- Upload Documents -->
         <div class="card">
           <h3>My Documents</h3>
-          <p style="color:var(--text2); font-size:0.9rem; margin-bottom:1rem;">Upload additional documents to your profile.</p>
-          
-          <div style="background: rgba(99,102,241,0.05); padding: 1rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1rem;">
+          <p style="color:var(--text2); font-size:0.9rem; margin-bottom:1rem;">Upload additional documents to your
+            profile.</p>
+
+          <div
+            style="background: rgba(99,102,241,0.05); padding: 1rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1rem;">
             <div class="form-group">
               <label style="color: var(--accent); font-weight: 600;">1. Select Document Type</label>
               <select id="newDocTypeSelect" style="width: 100%; border-color: var(--accent); margin-top: 0.5rem;">
@@ -277,16 +742,20 @@
                 <option value="Other">Other</option>
               </select>
             </div>
-            
+
             <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
               <label style="color: var(--accent); font-weight: 600;">2. Choose File</label>
-              <input type="file" id="newDocInput" accept=".pdf,.jpg,.png,.doc,.docx" style="margin-top: 0.5rem;" onchange="handleNewDocs(this.files)">
+              <input type="file" id="newDocInput" accept=".pdf,.jpg,.png,.doc,.docx" style="margin-top: 0.5rem;"
+                onchange="handleNewDocs(this.files)">
             </div>
           </div>
 
           <div id="new-doc-list" style="margin-bottom:1rem;"></div>
-          <button class="btn btn-primary" id="upload-docs-btn" onclick="uploadNewDocuments()" style="display:none; width: 100%;">Upload Selected Files</button>
-          <h4 style="margin-top:2rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">Uploaded Files</h4>
+          <button class="btn btn-primary" id="upload-docs-btn" onclick="uploadNewDocuments()"
+            style="display:none; width: 100%;">Upload Selected Files</button>
+          <h4
+            style="margin-top:2rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            Uploaded Files</h4>
           <div id="my-docs-list" style="display:flex; flex-direction:column; gap:0.5rem;">
             <!-- Rendered via JS -->
           </div>
@@ -295,7 +764,8 @@
         <!-- Logout Card in Profile Section -->
         <div class="danger-card">
           <h3>🚪 Sign Out</h3>
-          <p style="color:var(--text2); font-size:0.9rem; margin-bottom:1rem;">You will be securely logged out of your session. Any unsaved changes will be lost.</p>
+          <p style="color:var(--text2); font-size:0.9rem; margin-bottom:1rem;">You will be securely logged out of your
+            session. Any unsaved changes will be lost.</p>
           <button class="btn btn-danger-outline" onclick="logout()">Logout of EmpSphere</button>
         </div>
       </div>
@@ -309,13 +779,20 @@
           <form id="leaveForm" onsubmit="applyLeave(event)" style="margin-top: 1rem;">
             <div class="form-group">
               <label>Leave Type</label>
-              <select id="leaveType" required>
+              <select id="leaveType" required onchange="togglePrescriptionField()">
                 <option value="casual">Casual Leave</option>
                 <option value="sick">Sick Leave</option>
                 <option value="annual">Annual Leave</option>
                 <option value="maternity">Maternity Leave</option>
                 <option value="other">Other</option>
               </select>
+            </div>
+            <div class="form-group" id="prescriptionGroup"
+              style="display: none; border: 1px dashed var(--accent); padding: 1rem; border-radius: 8px; background: rgba(99,102,241,0.05);">
+              <label style="color: var(--accent); font-weight: 600;">📄 Upload Prescription (Required)</label>
+              <input type="file" id="leavePrescription" accept=".pdf,.jpg,.jpeg,.png">
+              <p style="font-size: 0.75rem; color: var(--text2); margin-top: 0.5rem;">Please upload a valid medical
+                certificate or prescription.</p>
             </div>
             <div class="grid-2" style="gap:1rem;">
               <div class="form-group">
@@ -334,7 +811,7 @@
             <button type="submit" class="btn btn-primary">Submit Application</button>
           </form>
         </div>
-        
+
         <div class="card" style="overflow:hidden; padding:0;">
           <h3 style="padding:1.5rem; border-bottom:1px solid var(--border);">My Leave History</h3>
           <div class="table-scroll-wrapper" style="max-height:400px; overflow-y:auto;">
@@ -384,12 +861,15 @@
       <div class="grid-2">
         <div class="card">
           <h3 style="margin-bottom: 1rem;">Appearance</h3>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg2); border-radius: 8px; border: 1px solid var(--border);">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg2); border-radius: 8px; border: 1px solid var(--border);">
             <div>
               <strong>Theme Preference</strong>
               <p style="font-size: 0.85rem; color: var(--text2);">Toggle between dark and light mode.</p>
             </div>
-            <button class="btn" id="theme-toggle-btn" onclick="toggleTheme()" style="background: transparent; border: 1px solid var(--border); color: var(--text);">Switch to Light Mode</button>
+            <button class="btn" id="theme-toggle-btn" onclick="toggleTheme()"
+              style="background: transparent; border: 1px solid var(--border); color: var(--text);">Switch to Light
+              Mode</button>
           </div>
         </div>
 
@@ -417,7 +897,8 @@
             <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text); font-size: 0.9rem;">
               <input type="checkbox" checked> Email notifications for Leave approvals
             </label>
-            <button class="btn btn-outline" onclick="alert('Preferences saved!')" style="margin-top: 0.5rem; width: max-content;">Save Preferences</button>
+            <button class="btn btn-outline" onclick="alert('Preferences saved!')"
+              style="margin-top: 0.5rem; width: max-content;">Save Preferences</button>
           </div>
         </div>
       </div>
@@ -430,7 +911,7 @@
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     const employeeId = localStorage.getItem('employeeId');
-    
+
     if (!token || role !== 'employee') {
       window.location.href = '/login.html';
     }
@@ -457,7 +938,7 @@
     function closeProfileDropdown() {
       document.getElementById('profile-dropdown').classList.remove('open');
     }
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       const btn = document.getElementById('header-profile-btn');
       if (btn && !btn.contains(e.target)) closeProfileDropdown();
     });
@@ -465,7 +946,7 @@
     function switchSection(sectionId) {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      
+
       document.getElementById(`${sectionId}-section`).classList.add('active');
 
       // Mark active nav item
@@ -474,7 +955,7 @@
           n.classList.add('active');
         }
       });
-      
+
       const titles = {
         'dashboard': `Welcome Back, ${localStorage.getItem('name') || 'Employee'}!`,
         'profile': 'My Profile',
@@ -503,19 +984,19 @@
       document.documentElement.setAttribute('data-theme', newTheme);
       localStorage.setItem('theme', newTheme);
       updateThemeBtn();
-      
+
       // Update charts
       if (window.Chart) {
-        Chart.helpers.each(Chart.instances, function(instance){
-          if(instance.options.scales.x) {
+        Chart.helpers.each(Chart.instances, function (instance) {
+          if (instance.options.scales.x) {
             instance.options.scales.x.ticks.color = newTheme === 'light' ? '#475569' : '#94a3b8';
             instance.options.scales.x.grid.color = newTheme === 'light' ? '#e2e8f0' : '#1f2d4a';
           }
-          if(instance.options.scales.y) {
+          if (instance.options.scales.y) {
             instance.options.scales.y.ticks.color = newTheme === 'light' ? '#475569' : '#94a3b8';
             instance.options.scales.y.grid.color = newTheme === 'light' ? '#e2e8f0' : '#1f2d4a';
           }
-          if(instance.options.plugins.legend) {
+          if (instance.options.plugins.legend) {
             instance.options.plugins.legend.labels.color = newTheme === 'light' ? '#0f172a' : '#e2e8f0';
           }
           instance.update();
@@ -525,12 +1006,12 @@
 
     function updateThemeBtn() {
       const btn = document.getElementById('theme-toggle-btn');
-      if(btn) {
+      if (btn) {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         btn.textContent = isDark ? 'Switch to Light Mode ☀️' : 'Switch to Dark Mode 🌙';
       }
     }
-    
+
     window.addEventListener('DOMContentLoaded', updateThemeBtn);
 
     function logout() { localStorage.clear(); window.location.href = '/login.html'; }
@@ -557,7 +1038,7 @@
     function renderChart(canvasId, type, labels, dataPoints, colors) {
       const ctx = document.getElementById(canvasId).getContext('2d');
       if (charts[canvasId]) charts[canvasId].destroy();
-      
+
       const config = {
         type,
         data: {
@@ -587,15 +1068,15 @@
     // Dashboard
     async function loadDashboard() {
       const data = await apiCall('/api/employee/stats');
-      
+
       document.getElementById('stat-leave-approved').textContent = data.leaves.approved;
       document.getElementById('stat-leave-pending').textContent = data.leaves.pending;
-      
+
       const recentSalary = data.salaries.length > 0 ? data.salaries[data.salaries.length - 1] : null;
       document.getElementById('stat-salary').textContent = recentSalary ? `₹${recentSalary.netSalary}` : '₹0';
 
-      renderChart('myLeaveStatusChart', 'pie', 
-        ['Approved', 'Pending', 'Rejected'], 
+      renderChart('myLeaveStatusChart', 'pie',
+        ['Approved', 'Pending', 'Rejected'],
         [data.leaves.approved, data.leaves.pending, data.leaves.rejected],
         ['#10b981', '#f59e0b', '#ef4444']
       );
@@ -638,7 +1119,7 @@
       if (profile.dob) document.getElementById('prof-dob').value = profile.dob.split('T')[0];
       document.getElementById('prof-bg').value = profile.bloodGroup || '';
       loadProfileDepts(profile.department || '');
-      
+
       const avatarUrl = profile.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || 'Emp')}&background=6366f1&color=fff&size=128`;
       document.getElementById('profile-large-img').src = avatarUrl;
       document.getElementById('header-profile-img').src = avatarUrl;
@@ -679,7 +1160,7 @@
       if (!input.files || input.files.length === 0) return;
       const formData = new FormData();
       formData.append('profileImage', input.files[0]);
-      
+
       const res = await apiCall('/api/employee/profile-image', { method: 'PUT', body: formData });
       alert('Profile image updated!');
       loadProfile();
@@ -744,13 +1225,13 @@
 
     async function uploadNewDocuments() {
       if (selectedNewDocs.length === 0) return alert('Please select files first');
-      
+
       const formData = new FormData();
       selectedNewDocs.forEach(item => {
         formData.append('documents', item.file);
         formData.append('documentTypes', item.docType);
       });
-      
+
       const btn = document.getElementById('upload-docs-btn');
       btn.disabled = true;
       btn.textContent = 'Uploading...';
@@ -778,19 +1259,59 @@
       `).join('');
     }
 
+    function togglePrescriptionField() {
+      const type = document.getElementById('leaveType').value;
+      const group = document.getElementById('prescriptionGroup');
+      const fileInput = document.getElementById('leavePrescription');
+      if (type === 'sick') {
+        group.style.display = 'block';
+        fileInput.required = true;
+      } else {
+        group.style.display = 'none';
+        fileInput.required = false;
+        fileInput.value = '';
+      }
+    }
+
     async function applyLeave(e) {
       e.preventDefault();
-      const payload = {
-        leaveType: document.getElementById('leaveType').value,
-        fromDate: document.getElementById('leaveFrom').value,
-        toDate: document.getElementById('leaveTo').value,
-        reason: document.getElementById('leaveReason').value,
-      };
-      await apiCall('/api/leaves', { method: 'POST', body: JSON.stringify(payload) });
-      alert('Leave application submitted!');
-      document.getElementById('leaveForm').reset();
-      loadLeavesHistory();
-      loadDashboard();
+      const leaveType = document.getElementById('leaveType').value;
+      const fromDate = document.getElementById('leaveFrom').value;
+      const toDate = document.getElementById('leaveTo').value;
+      const reason = document.getElementById('leaveReason').value;
+      const prescriptionFile = document.getElementById('leavePrescription').files[0];
+
+      if (leaveType === 'sick' && !prescriptionFile) {
+        return alert('Prescription is required for Sick Leave');
+      }
+
+      const formData = new FormData();
+      formData.append('leaveType', leaveType);
+      formData.append('fromDate', fromDate);
+      formData.append('toDate', toDate);
+      formData.append('reason', reason);
+      if (prescriptionFile) {
+        formData.append('prescription', prescriptionFile);
+      }
+
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      try {
+        await apiCall('/api/leaves', { method: 'POST', body: formData });
+        alert('Leave application submitted successfully!');
+        document.getElementById('leaveForm').reset();
+        togglePrescriptionField(); // Hide it again if it was shown
+        loadLeavesHistory();
+        loadDashboard();
+      } catch (err) {
+        // Error already alerted in apiCall
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
 
     // Salary
@@ -816,9 +1337,10 @@
         document.getElementById('header-profile-img').src = avatarUrl;
         document.getElementById('profile-large-img').src = avatarUrl;
         document.getElementById('page-title').textContent = `Welcome Back, ${p.name}!`;
-      } catch(e) {}
+      } catch (e) { }
       loadDashboard();
     })();
   </script>
 </body>
+
 </html>
