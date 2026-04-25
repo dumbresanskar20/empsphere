@@ -4,10 +4,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Employee Portal - EmpSphere</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -607,6 +611,8 @@
     <div class="brand">🏢 <span>EmpSphere</span></div>
     <div class="nav-item active" onclick="switchSection('dashboard')">📊 My Dashboard</div>
     <div class="nav-item" onclick="switchSection('profile')">👤 My Profile</div>
+    <div class="nav-item" onclick="switchSection('tasks')">📋 My Tasks</div>
+    <div class="nav-item" onclick="switchSection('attendance')">🕐 Attendance</div>
     <div class="nav-item" onclick="switchSection('leaves')">📅 My Leaves</div>
     <div class="nav-item" onclick="switchSection('salary')">💰 My Salary</div>
     <div class="nav-item" onclick="switchSection('settings')">⚙️ Settings</div>
@@ -776,6 +782,50 @@
           <p style="color:var(--text2); font-size:0.9rem; margin-bottom:1rem;">You will be securely logged out of your
             session. Any unsaved changes will be lost.</p>
           <button class="btn btn-danger-outline" onclick="logout()">Logout of EmpSphere</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tasks Section -->
+    <div id="tasks-section" class="section">
+      <div class="table-container">
+        <div class="table-header"><h3>My Assigned Tasks</h3></div>
+        <div class="table-scroll-wrapper">
+          <table>
+            <thead><tr><th>Title</th><th>Description</th><th>Due Date</th><th>Penalty (₹)</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="my-task-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendance Section -->
+    <div id="attendance-section" class="section">
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="margin-bottom:1rem;">📸 Mark Attendance</h3>
+          <div id="att-status-msg" style="padding:1rem;border-radius:12px;margin-bottom:1rem;display:none;"></div>
+          <div id="face-setup-area">
+            <div id="webcam-container" style="position:relative;width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;border:2px solid var(--border);background:#000;">
+              <video id="webcam-video" autoplay muted playsinline style="width:100%;display:block;transform:scaleX(-1);"></video>
+              <canvas id="face-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
+            </div>
+            <div style="text-align:center;margin-top:1rem;">
+              <button class="btn btn-primary" id="start-cam-btn" onclick="startCamera()" style="margin-right:0.5rem;">📷 Start Camera</button>
+              <button class="btn btn-primary" id="capture-attendance-btn" onclick="captureAndVerify()" style="display:none;">✅ Verify & Mark Attendance</button>
+              <button class="btn btn-outline" id="register-face-btn" onclick="registerFace()" style="display:none;margin-left:0.5rem;">💾 Register Face</button>
+            </div>
+            <p style="text-align:center;margin-top:0.8rem;font-size:0.85rem;color:var(--text2);" id="face-info-text">Click "Start Camera" to begin face verification.</p>
+          </div>
+        </div>
+        <div class="card" style="overflow:hidden;padding:0;">
+          <h3 style="padding:1.5rem;border-bottom:1px solid var(--border);">📅 Attendance History</h3>
+          <div class="table-scroll-wrapper" style="max-height:400px;overflow-y:auto;">
+            <table>
+              <thead><tr><th>Date</th><th>Status</th><th>Check-in Time</th><th>Face Verified</th></tr></thead>
+              <tbody id="my-attendance-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -968,6 +1018,8 @@
       const titles = {
         'dashboard': `Welcome Back, ${localStorage.getItem('name') || 'Employee'}!`,
         'profile': 'My Profile',
+        'tasks': 'My Tasks',
+        'attendance': 'Attendance',
         'leaves': 'My Leaves',
         'salary': 'My Salary',
         'settings': 'Settings'
@@ -979,6 +1031,8 @@
 
       if (sectionId === 'dashboard') loadDashboard();
       if (sectionId === 'profile') loadProfile();
+      if (sectionId === 'tasks') loadMyTasks();
+      if (sectionId === 'attendance') loadAttendanceSection();
       if (sectionId === 'leaves') loadLeavesHistory();
       if (sectionId === 'salary') loadSalaryHistory();
     }
@@ -1337,6 +1391,178 @@
           <td style="font-size:0.85rem; color:var(--text2)">${s.notes || '-'}</td>
         </tr>
       `).join('');
+    }
+
+    // ── My Tasks ──────────────────────────────────────────────────────
+    async function loadMyTasks() {
+      try {
+        const tasks = await apiCall('/api/tasks/my');
+        const tbody = document.getElementById('my-task-tbody');
+        if (!tasks.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:2rem;">No tasks assigned yet.</td></tr>';
+          return;
+        }
+        const statusColors = { pending: 'pending', completed: 'approved', overdue: 'rejected' };
+        tbody.innerHTML = tasks.map(t => `<tr>
+          <td style="font-weight:600;">${t.title}</td>
+          <td style="font-size:0.85rem;color:var(--text2);max-width:200px;white-space:normal;">${t.description || '—'}</td>
+          <td>${new Date(t.dueDate).toLocaleString()}</td>
+          <td>${t.penaltyAmount > 0 ? '₹' + t.penaltyAmount : '—'}</td>
+          <td><span class="badge ${statusColors[t.status]}">${t.status}</span></td>
+          <td>${t.status === 'pending' ? `<button class="btn btn-primary" onclick="completeTask('${t._id}')">✅ Complete</button>` : (t.status === 'completed' ? '<span style="color:var(--success)">Done</span>' : '<span style="color:var(--danger)">Overdue</span>')}</td>
+        </tr>`).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function completeTask(taskId) {
+      if (!confirm('Mark this task as completed?')) return;
+      await apiCall(`/api/tasks/${taskId}/complete`, { method: 'PUT', body: JSON.stringify({}) });
+      alert('Task marked as completed! Admin has been notified.');
+      loadMyTasks();
+    }
+
+    // ── Attendance (Face Auth) ──────────────────────────────────────────
+    let videoStream = null;
+    let faceModelsLoaded = false;
+
+    async function loadAttendanceSection() {
+      await loadMyAttendance();
+      // Check if already marked today
+      try {
+        const res = await apiCall('/api/attendance/today');
+        if (res.markedToday) {
+          showAttMsg('✅ Attendance already marked for today at ' + new Date(res.attendance.checkInTime).toLocaleTimeString(), 'success');
+          document.getElementById('capture-attendance-btn').style.display = 'none';
+        }
+      } catch (e) {}
+      // Check face descriptor
+      try {
+        const fd = await apiCall('/api/attendance/face-descriptor');
+        if (!fd.hasFaceDescriptor) {
+          document.getElementById('face-info-text').textContent = 'No face registered yet. Start camera and click "Register Face" first.';
+        }
+      } catch (e) {}
+    }
+
+    function showAttMsg(msg, type) {
+      const el = document.getElementById('att-status-msg');
+      el.style.display = 'block';
+      el.textContent = msg;
+      el.style.background = type === 'success' ? 'rgba(16,185,129,0.15)' : type === 'error' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)';
+      el.style.color = type === 'success' ? '#6ee7b7' : type === 'error' ? '#fca5a5' : '#a5b4fc';
+      el.style.border = `1px solid ${type === 'success' ? 'rgba(16,185,129,0.3)' : type === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(99,102,241,0.3)'}`;
+    }
+
+    async function loadFaceModels() {
+      if (faceModelsLoaded) return;
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+      try {
+        showAttMsg('Loading face recognition models...', 'info');
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        faceModelsLoaded = true;
+        showAttMsg('Face models loaded. Position your face in the camera.', 'info');
+      } catch (err) {
+        console.error('Face model load error:', err);
+        showAttMsg('Could not load face models. Attendance will be marked without face verification.', 'error');
+      }
+    }
+
+    async function startCamera() {
+      try {
+        const video = document.getElementById('webcam-video');
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300, facingMode: 'user' } });
+        video.srcObject = videoStream;
+        document.getElementById('start-cam-btn').style.display = 'none';
+        document.getElementById('capture-attendance-btn').style.display = 'inline-block';
+        document.getElementById('register-face-btn').style.display = 'inline-block';
+        await loadFaceModels();
+      } catch (err) {
+        showAttMsg('Camera access denied. Please allow camera permissions.', 'error');
+      }
+    }
+
+    function stopCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(t => t.stop());
+        videoStream = null;
+      }
+    }
+
+    async function registerFace() {
+      if (!faceModelsLoaded) { showAttMsg('Face models not loaded yet.', 'error'); return; }
+      const video = document.getElementById('webcam-video');
+      showAttMsg('Detecting face... Hold still.', 'info');
+      const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      if (!detection) { showAttMsg('No face detected. Please position your face clearly in the camera.', 'error'); return; }
+      const descriptor = Array.from(detection.descriptor);
+      await apiCall('/api/attendance/face-descriptor', { method: 'PUT', body: JSON.stringify({ faceDescriptor: descriptor }) });
+      showAttMsg('✅ Face registered successfully! You can now use face verification for attendance.', 'success');
+    }
+
+    async function captureAndVerify() {
+      if (!faceModelsLoaded) {
+        // Mark without face verification
+        await markAttendanceAPI(false);
+        return;
+      }
+      const video = document.getElementById('webcam-video');
+      showAttMsg('Detecting face... Hold still.', 'info');
+      const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+      if (!detection) { showAttMsg('No face detected. Please position your face clearly.', 'error'); return; }
+
+      // Get stored descriptor
+      try {
+        const fd = await apiCall('/api/attendance/face-descriptor');
+        if (!fd.hasFaceDescriptor || fd.faceDescriptor.length === 0) {
+          showAttMsg('No registered face found. Registering now and marking attendance...', 'info');
+          const desc = Array.from(detection.descriptor);
+          await apiCall('/api/attendance/face-descriptor', { method: 'PUT', body: JSON.stringify({ faceDescriptor: desc }) });
+          await markAttendanceAPI(true);
+          return;
+        }
+        const storedDesc = new Float32Array(fd.faceDescriptor);
+        const liveDesc = detection.descriptor;
+        const distance = faceapi.euclideanDistance(storedDesc, liveDesc);
+        const threshold = 0.6;
+        if (distance < threshold) {
+          await markAttendanceAPI(true);
+        } else {
+          showAttMsg(`❌ Face verification failed (distance: ${distance.toFixed(3)}). This does not match the registered face.`, 'error');
+        }
+      } catch (e) {
+        console.error(e);
+        showAttMsg('Error verifying face. Marking without verification.', 'error');
+        await markAttendanceAPI(false);
+      }
+    }
+
+    async function markAttendanceAPI(faceVerified) {
+      try {
+        const res = await apiCall('/api/attendance/mark', { method: 'POST', body: JSON.stringify({ faceVerified }) });
+        showAttMsg('✅ ' + res.message, 'success');
+        stopCamera();
+        document.getElementById('capture-attendance-btn').style.display = 'none';
+        document.getElementById('register-face-btn').style.display = 'none';
+        loadMyAttendance();
+      } catch (e) {
+        if (e.message.includes('already marked')) {
+          showAttMsg('Attendance already marked for today.', 'success');
+        }
+      }
+    }
+
+    async function loadMyAttendance() {
+      try {
+        const records = await apiCall('/api/attendance/my');
+        document.getElementById('my-attendance-tbody').innerHTML = records.map(a => `<tr>
+          <td>${a.date}</td>
+          <td><span class="badge approved">${a.status}</span></td>
+          <td>${a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString() : '—'}</td>
+          <td>${a.faceVerified ? '✅ Yes' : '❌ No'}</td>
+        </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text2)">No attendance records.</td></tr>';
+      } catch (e) { console.error(e); }
     }
 
     // Init Header Profile Image 

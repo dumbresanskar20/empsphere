@@ -3,11 +3,15 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
 const { connectDB } = require('./config/db');
+const { startOverdueTaskCron } = require('./utils/cronJobs');
 
 dotenv.config();
 
 // Connect to MongoDB
-connectDB();
+connectDB().then(() => {
+  // Start cron jobs after DB connection
+  startOverdueTaskCron();
+});
 
 const app = express();
 
@@ -16,7 +20,7 @@ app.use(cors({
   origin: '*',
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased for face descriptors
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files statically
@@ -33,6 +37,9 @@ app.use('/api/salaries', require('./routes/salaryRoutes'));
 app.use('/api/employee', require('./routes/employeeRoutes'));
 app.use('/api/departments', require('./routes/departmentRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api/tasks', require('./routes/taskRoutes'));
+app.use('/api/attendance', require('./routes/attendanceRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api', require('./routes/fileRoutes')); // GridFS routes (/api/upload, /api/files)
 
 // Health check

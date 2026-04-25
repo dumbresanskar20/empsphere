@@ -156,23 +156,28 @@ db.leaves.insertOne({
   userId: ObjectId("user_id_here"),
   employeeId: "EMP001",
   employeeName: "Jane Doe",
-  leaveType: "annual",
+  leaveType: "sick",
   fromDate: new Date("2024-05-10"),
-  toDate: new Date("2024-05-15"),
-  reason: "Going on a family vacation",
+  toDate: new Date("2024-05-12"),
+  reason: "Severe fever and cold",
   status: "pending",
+  prescriptionPath: "/api/files/1700000000-prescription.jpg", // Link to GridFS
+  prescriptionFilename: "1700000000-prescription.jpg",
   adminComment: "",
   createdAt: new Date(),
   updatedAt: new Date()
 });
 
-// B. Get all leaves for a specific employee (newest first)
+// B. Find a leave with its prescription
+db.leaves.findOne({ _id: ObjectId("leave_id_here") });
+
+// C. Get all leaves for a specific employee (newest first)
 db.leaves.find({ userId: ObjectId("user_id_here") }).sort({ createdAt: -1 });
 
-// C. Admin: Get all leaves in the system
+// D. Admin: Get all leaves in the system
 db.leaves.find().sort({ createdAt: -1 });
 
-// D. Admin: Approve or Reject a leave with a comment
+// E. Admin: Approve or Reject a leave with a comment
 db.leaves.updateOne(
   { _id: ObjectId("leave_id_here") },
   {
@@ -328,3 +333,42 @@ db.departments.deleteOne({ _id: ObjectId("dept_id_here") });
 
 // G. Get employees belonging to a specific department
 db.users.find({ role: "employee", department: "Engineering" }, { password: 0 }).sort({ name: 1 });
+
+
+// ---------------------------------------------------------
+// 9. GRIDFS FILE HANDLING (fileRoutes.js & gridfsHelper.js)
+// ---------------------------------------------------------
+
+// A. Get metadata for all uploaded files (GridFS standard collections)
+db.uploads.files.find().sort({ uploadDate: -1 });
+
+// B. Find a specific file by filename
+db.uploads.files.findOne({ filename: "1700000000-prescription.jpg" });
+
+// C. Find file chunks for a specific file (retrieving the binary data)
+// Note: 'files_id' links chunks to the 'files' collection entry
+db.uploads.chunks.find({ files_id: ObjectId("file_object_id_here") }).sort({ n: 1 });
+
+// D. Delete a file and its chunks
+db.uploads.files.deleteOne({ _id: ObjectId("file_object_id_here") });
+db.uploads.chunks.deleteMany({ files_id: ObjectId("file_object_id_here") });
+
+
+// ---------------------------------------------------------
+// 10. DATABASE MAINTENANCE & CLEAN START (resetDB.js)
+// ---------------------------------------------------------
+
+// A. List all collections in the database
+db.getCollectionNames();
+
+// B. Drop all collections (Clears the database for a fresh start)
+db.users.drop();
+db.leaves.drop();
+db.departments.drop();
+db.salaries.drop();
+db.uploads.files.drop();
+db.uploads.chunks.drop();
+
+// C. Verify database is empty
+db.getCollectionNames();
+

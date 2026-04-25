@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Admin Dashboard - EmpSphere</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
@@ -577,9 +580,12 @@
     <div class="brand">🏢 <span>EmpSphere</span></div>
     <div class="nav-item active" onclick="switchSection('dashboard')">📊 Dashboard</div>
     <div class="nav-item" onclick="switchSection('employees')">👥 Employees</div>
+    <div class="nav-item" onclick="switchSection('tasks')">📋 Tasks</div>
+    <div class="nav-item" onclick="switchSection('attendance')">🕐 Attendance</div>
     <div class="nav-item" onclick="switchSection('departments')">🏬 Departments</div>
     <div class="nav-item" onclick="switchSection('leaves')">📅 Leaves</div>
     <div class="nav-item" onclick="switchSection('salaries')">💰 Salaries</div>
+    <div class="nav-item" onclick="switchSection('deductions')">📉 Deductions</div>
     <div class="nav-item" onclick="switchSection('settings')">⚙️ Settings</div>
     <div class="logout-btn" onclick="logout()">🚪 Logout</div>
   </aside>
@@ -625,6 +631,18 @@
         <div class="stat-card">
           <div class="stat-title">Pending Leaves</div>
           <div class="stat-value" id="stat-pending-leave" style="color: var(--warning)">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Active Tasks</div>
+          <div class="stat-value" id="stat-active-tasks" style="color: var(--accent)">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Overdue Tasks</div>
+          <div class="stat-value" id="stat-overdue-tasks" style="color: var(--danger)">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">Present Today</div>
+          <div class="stat-value" id="stat-present-today" style="color: var(--success)">0</div>
         </div>
       </div>
 
@@ -761,6 +779,71 @@
       </div>
     </div>
 
+    <!-- Tasks Section -->
+    <div id="tasks-section" class="section">
+      <div class="table-container">
+        <div class="table-header">
+          <h3>Task Management</h3>
+          <button class="btn btn-primary" onclick="openTaskModal()">+ Assign Task</button>
+        </div>
+        <div class="table-scroll-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Assigned To</th>
+                <th>Due Date</th>
+                <th>Penalty (₹)</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="task-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attendance Section -->
+    <div id="attendance-section" class="section">
+      <div class="stats-grid" style="margin-bottom:1.5rem;">
+        <div class="stat-card"><div class="stat-title">Present Today</div><div class="stat-value" id="att-present" style="color:var(--success)">0</div></div>
+        <div class="stat-card"><div class="stat-title">Absent Today</div><div class="stat-value" id="att-absent" style="color:var(--danger)">0</div></div>
+        <div class="stat-card"><div class="stat-title">Total Employees</div><div class="stat-value" id="att-total">0</div></div>
+      </div>
+      <div class="form-group" style="max-width:300px;margin-bottom:1rem;">
+        <label>Select Date</label>
+        <input type="date" id="attendance-date" onchange="loadAttendanceForDate(this.value)">
+      </div>
+      <div class="charts-grid" style="margin-bottom:1.5rem;">
+        <div class="chart-container"><div class="chart-title">7-Day Attendance Trend</div><canvas id="attendanceTrendChart"></canvas></div>
+        <div class="chart-container"><div class="chart-title">Today's Overview</div><canvas id="attendancePieChart"></canvas></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="table-container">
+          <div class="table-header"><h3 style="color:var(--success)">✅ Present</h3></div>
+          <div class="table-scroll-wrapper"><table><thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Time</th></tr></thead><tbody id="att-present-tbody"></tbody></table></div>
+        </div>
+        <div class="table-container">
+          <div class="table-header"><h3 style="color:var(--danger)">❌ Absent</h3></div>
+          <div class="table-scroll-wrapper"><table><thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Email</th></tr></thead><tbody id="att-absent-tbody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deductions Section -->
+    <div id="deductions-section" class="section">
+      <div class="table-container">
+        <div class="table-header"><h3>Salary Deduction Logs (Penalties)</h3></div>
+        <div class="table-scroll-wrapper">
+          <table>
+            <thead><tr><th>Emp ID</th><th>Name</th><th>Month</th><th>Deductions (₹)</th><th>Notes</th></tr></thead>
+            <tbody id="deduction-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Settings Section -->
     <div id="settings-section" class="section">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
@@ -888,6 +971,39 @@
     </div>
   </div>
 
+  <!-- Task Modal -->
+  <div id="taskModal" class="modal">
+    <div class="modal-content" style="max-width:550px;">
+      <div class="modal-header">
+        <h3>Assign New Task</h3>
+        <button class="close-btn" onclick="closeModal('taskModal')">✕</button>
+      </div>
+      <form id="taskForm" onsubmit="handleTaskSubmit(event)">
+        <div class="form-group">
+          <label>Task Title <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="taskTitle" required placeholder="Enter task title">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="taskDesc" rows="3" placeholder="Task details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Assign To <span style="color:var(--danger)">*</span></label>
+          <select id="taskEmployee" required></select>
+        </div>
+        <div class="form-group">
+          <label>Due Date & Time <span style="color:var(--danger)">*</span></label>
+          <input type="datetime-local" id="taskDueDate" required>
+        </div>
+        <div class="form-group">
+          <label>Penalty Amount (₹)</label>
+          <input type="number" id="taskPenalty" value="0" min="0" placeholder="0">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Assign Task</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Department Modal -->
   <div id="deptModal" class="modal">
     <div class="modal-content" style="max-width:480px;">
@@ -976,9 +1092,12 @@
       const titles = {
         'dashboard': 'Dashboard Overview',
         'employees': 'Employee Management',
+        'tasks': 'Task Management',
+        'attendance': 'Attendance Monitoring',
         'departments': 'Department Management',
         'leaves': 'Leave Management',
         'salaries': 'Salary Management',
+        'deductions': 'Salary Deduction Logs',
         'settings': 'System Settings'
       };
       document.getElementById('page-title').textContent = titles[sectionId] || sectionId;
@@ -989,9 +1108,12 @@
       // Load specific data
       if (sectionId === 'dashboard') loadDashboardData();
       if (sectionId === 'employees') loadEmployees();
+      if (sectionId === 'tasks') loadTasks();
+      if (sectionId === 'attendance') loadAttendanceSection();
       if (sectionId === 'departments') loadDepartments();
       if (sectionId === 'leaves') loadLeaves();
       if (sectionId === 'salaries') loadSalaries();
+      if (sectionId === 'deductions') loadDeductions();
     }
 
     // Theme Management
@@ -1062,6 +1184,9 @@
         document.getElementById('stat-total-emp').textContent = data.employees.total;
         document.getElementById('stat-pending-emp').textContent = data.employees.pending;
         document.getElementById('stat-pending-leave').textContent = data.leaves.pending;
+        document.getElementById('stat-active-tasks').textContent = (data.tasks ? data.tasks.pending : 0);
+        document.getElementById('stat-overdue-tasks').textContent = (data.tasks ? data.tasks.overdue : 0);
+        document.getElementById('stat-present-today').textContent = (data.attendance ? data.attendance.presentToday : 0);
 
         // Render Charts
         renderChart('empStatusChart', 'doughnut',
@@ -1406,6 +1531,137 @@
       loadDepartments();
     }
 
+    // ── Task Management ──────────────────────────────────────────────────
+    async function loadTasks() {
+      const tasks = await apiCall('/api/tasks');
+      const tbody = document.getElementById('task-table-body');
+      if (!tasks.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:2rem;">No tasks yet. Click "+ Assign Task" to create one.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = tasks.map(t => {
+        const emp = t.assignedEmployee;
+        const empName = emp ? `${emp.name} (${emp.employeeId})` : 'Unknown';
+        const due = new Date(t.dueDate);
+        const statusColors = { pending: 'pending', completed: 'approved', overdue: 'rejected' };
+        return `<tr>
+          <td style="font-weight:600;">${t.title}</td>
+          <td>${empName}</td>
+          <td>${due.toLocaleString()}</td>
+          <td>${t.penaltyAmount > 0 ? '₹' + t.penaltyAmount.toLocaleString() : '—'}</td>
+          <td><span class="badge ${statusColors[t.status]}">${t.status}${t.isPenaltyApplied ? ' (penalty applied)' : ''}</span></td>
+          <td>
+            <div class="action-btns">
+              <button class="btn btn-danger" onclick="deleteTask('${t._id}')">Delete</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function openTaskModal() {
+      document.getElementById('taskForm').reset();
+      // Populate employees dropdown
+      const sel = document.getElementById('taskEmployee');
+      sel.innerHTML = allEmployees.filter(e => e.status === 'approved').map(e =>
+        `<option value="${e._id}">${e.name} (${e.employeeId})</option>`
+      ).join('');
+      if (!sel.innerHTML) sel.innerHTML = '<option value="">No approved employees</option>';
+      // Set default due date to tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('taskDueDate').value = tomorrow.toISOString().slice(0, 16);
+      openModal('taskModal');
+    }
+
+    async function handleTaskSubmit(e) {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('taskTitle').value.trim(),
+        description: document.getElementById('taskDesc').value.trim(),
+        assignedEmployee: document.getElementById('taskEmployee').value,
+        dueDate: document.getElementById('taskDueDate').value,
+        penaltyAmount: Number(document.getElementById('taskPenalty').value) || 0,
+      };
+      await apiCall('/api/tasks', { method: 'POST', body: JSON.stringify(payload) });
+      closeModal('taskModal');
+      loadTasks();
+    }
+
+    async function deleteTask(id) {
+      if (!confirm('Are you sure you want to delete this task?')) return;
+      await apiCall(`/api/tasks/${id}`, { method: 'DELETE' });
+      loadTasks();
+    }
+
+    // ── Attendance Monitoring ──────────────────────────────────────────
+    async function loadAttendanceSection() {
+      document.getElementById('attendance-date').value = new Date().toISOString().split('T')[0];
+      await Promise.all([loadAttendanceStats(), loadAttendanceForDate()]);
+    }
+
+    async function loadAttendanceStats() {
+      try {
+        const stats = await apiCall('/api/attendance/stats');
+        document.getElementById('att-present').textContent = stats.today.present;
+        document.getElementById('att-absent').textContent = stats.today.absent;
+        document.getElementById('att-total').textContent = stats.today.total;
+
+        // Trend chart
+        renderChart('attendanceTrendChart', 'line',
+          stats.trend.map(d => d.date.slice(5)),
+          stats.trend.map(d => d.present),
+          '#10b981'
+        );
+
+        // Pie chart
+        renderChart('attendancePieChart', 'doughnut',
+          ['Present', 'Absent'],
+          [stats.today.present, stats.today.absent],
+          ['#10b981', '#ef4444']
+        );
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadAttendanceForDate(date) {
+      date = date || new Date().toISOString().split('T')[0];
+      try {
+        const data = await apiCall(`/api/attendance/daily?date=${date}`);
+        // Present table
+        document.getElementById('att-present-tbody').innerHTML = data.present.map(a => {
+          const e = a.employeeId;
+          return `<tr><td>${e?.employeeId || '—'}</td><td>${e?.name || '—'}</td><td>${e?.department || '—'}</td><td>${a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString() : '—'}</td></tr>`;
+        }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text2)">None</td></tr>';
+
+        // Absent table
+        document.getElementById('att-absent-tbody').innerHTML = data.absent.map(e =>
+          `<tr><td>${e.employeeId || '—'}</td><td>${e.name}</td><td>${e.department || '—'}</td><td>${e.email}</td></tr>`
+        ).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text2)">None</td></tr>';
+      } catch (e) { console.error(e); }
+    }
+
+    // ── Deductions Log ──────────────────────────────────────────────────
+    async function loadDeductions() {
+      try {
+        const salaries = await apiCall('/api/salaries');
+        const withDeductions = salaries.filter(s => s.deductions > 0);
+        const tbody = document.getElementById('deduction-table-body');
+        if (!withDeductions.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:2rem;">No deductions/penalties recorded yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = withDeductions.map(s => `
+          <tr>
+            <td>${s.employeeId}</td>
+            <td>${s.employeeName}</td>
+            <td>${s.month}</td>
+            <td style="font-weight:bold;color:var(--danger)">₹${s.deductions.toLocaleString()}</td>
+            <td style="font-size:0.85rem;color:var(--text2);white-space:pre-wrap;">${s.notes || '—'}</td>
+          </tr>
+        `).join('');
+      } catch (e) { console.error(e); }
+    }
+
     // Init
     (function init() {
       const name = localStorage.getItem('name');
@@ -1416,6 +1672,8 @@
         }
       }
       loadDashboardData();
+      // Pre-load employees for task assignment dropdown
+      loadEmployees();
     })();
   </script>
 </body>

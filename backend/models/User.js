@@ -25,6 +25,18 @@ const userSchema = new mongoose.Schema(
     bloodGroup: { type: String, enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', ''] },
     department: { type: String, trim: true, default: '' },
     profileImage: { type: String, default: '' },
+    faceDescriptor: {
+      type: [Number], // face-api.js descriptor (128-dimensional Float32Array)
+      default: [],
+    },
+    deductions: [
+      {
+        amount: { type: Number, required: true },
+        reason: { type: String, required: true },
+        date: { type: Date, default: Date.now },
+        taskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task' },
+      },
+    ],
     documents: [
       {
         documentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document' },

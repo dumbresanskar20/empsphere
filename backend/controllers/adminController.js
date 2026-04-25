@@ -76,6 +76,8 @@ const getAdminStats = async (req, res) => {
   try {
     const Leave = require('../models/Leave');
     const Salary = require('../models/Salary');
+    const Task = require('../models/Task');
+    const Attendance = require('../models/Attendance');
 
     const totalEmployees = await User.countDocuments({ role: 'employee' });
     const approvedCount = await User.countDocuments({ role: 'employee', status: 'approved' });
@@ -86,6 +88,16 @@ const getAdminStats = async (req, res) => {
     const approvedLeaves = await Leave.countDocuments({ status: 'approved' });
     const pendingLeaves = await Leave.countDocuments({ status: 'pending' });
     const rejectedLeaves = await Leave.countDocuments({ status: 'rejected' });
+
+    // Task stats
+    const totalTasks = await Task.countDocuments();
+    const pendingTasks = await Task.countDocuments({ status: 'pending' });
+    const completedTasks = await Task.countDocuments({ status: 'completed' });
+    const overdueTasks = await Task.countDocuments({ status: 'overdue' });
+
+    // Today's attendance
+    const today = new Date().toISOString().split('T')[0];
+    const presentToday = await Attendance.countDocuments({ date: today, status: 'present' });
 
     // City distribution
     const cityData = await User.aggregate([
@@ -135,6 +147,8 @@ const getAdminStats = async (req, res) => {
     res.json({
       employees: { total: totalEmployees, approved: approvedCount, pending: pendingCount, rejected: rejectedCount },
       leaves: { total: totalLeaves, approved: approvedLeaves, pending: pendingLeaves, rejected: rejectedLeaves },
+      tasks: { total: totalTasks, pending: pendingTasks, completed: completedTasks, overdue: overdueTasks },
+      attendance: { presentToday, totalApproved: approvedCount },
       cityData,
       joinTrend,
       salaryData,
