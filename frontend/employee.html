@@ -209,6 +209,12 @@
       border-color: var(--accent);
     }
 
+    .header-profile-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
     .profile-dropdown {
       display: none;
       position: absolute;
@@ -577,6 +583,7 @@
       .grid-2 {
         grid-template-columns: 1fr;
       }
+      .header-profile-name { display: none; }
     }
 
     @media (max-width: 480px) {
@@ -621,6 +628,8 @@
         <div class="header-profile" id="header-profile-btn" onclick="toggleProfileDropdown()">
           <img src="https://via.placeholder.com/36" id="header-profile-img" class="profile-img-small" alt="Profile"
             style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
+          <span class="header-profile-name" id="header-user-name">Employee</span>
+          <span style="font-size:0.7rem; color:var(--text2); margin-left:2px;">▼</span>
           <div class="profile-dropdown" id="profile-dropdown">
             <div class="profile-dropdown-item" onclick="switchSection('profile'); closeProfileDropdown();">👤 My Profile
             </div>
@@ -1123,6 +1132,7 @@
       const avatarUrl = profile.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || 'Emp')}&background=6366f1&color=fff&size=128`;
       document.getElementById('profile-large-img').src = avatarUrl;
       document.getElementById('header-profile-img').src = avatarUrl;
+      document.getElementById('header-user-name').textContent = profile.name || 'Employee';
 
       const docsList = document.getElementById('my-docs-list');
       if (profile.documents && profile.documents.length > 0) {
@@ -1331,12 +1341,22 @@
 
     // Init Header Profile Image 
     (async function init() {
+      // Quick load from localStorage
+      const cachedName = localStorage.getItem('name');
+      if (cachedName) {
+        document.getElementById('header-user-name').textContent = cachedName;
+        document.getElementById('page-title').textContent = `Welcome Back, ${cachedName}!`;
+      }
+
       try {
         const p = await apiCall('/api/employee/profile');
         const avatarUrl = p.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'Emp')}&background=6366f1&color=fff&size=128`;
         document.getElementById('header-profile-img').src = avatarUrl;
         document.getElementById('profile-large-img').src = avatarUrl;
+        document.getElementById('header-user-name').textContent = p.name || 'Employee';
         document.getElementById('page-title').textContent = `Welcome Back, ${p.name}!`;
+        // Sync back to localStorage if updated
+        localStorage.setItem('name', p.name);
       } catch (e) { }
       loadDashboard();
     })();

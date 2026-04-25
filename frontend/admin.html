@@ -1407,7 +1407,16 @@
     }
 
     // Init
-    loadDashboardData();
+    (function init() {
+      const name = localStorage.getItem('name');
+      if (name) {
+        document.getElementById('admin-name').textContent = name;
+        if (document.getElementById('admin-avatar')) {
+          document.getElementById('admin-avatar').textContent = name.charAt(0).toUpperCase();
+        }
+      }
+      loadDashboardData();
+    })();
   </script>
 </body>
 
