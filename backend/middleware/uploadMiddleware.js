@@ -6,12 +6,12 @@ const path = require('path');
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt/;
+  const allowed = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt|zip|rar/;
   const ext = path.extname(file.originalname).toLowerCase();
   if (allowed.test(ext)) {
     cb(null, true);
   } else {
-    cb(new Error('File type not allowed. Supported: images, PDF, Word, Excel, TXT'), false);
+    cb(new Error('File type not allowed. Supported: images, PDF, Word, Excel, TXT, ZIP'), false);
   }
 };
 
@@ -41,3 +41,17 @@ exports.uploadPrescription = multer({
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 }).single('prescription');
+
+// Task document upload by employee
+exports.uploadTaskDocument = multer({
+  storage: storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}).single('taskDocument');
+
+// Resignation letter upload
+exports.uploadResignationLetter = multer({
+  storage: storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}).single('resignationLetter');

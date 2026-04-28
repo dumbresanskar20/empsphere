@@ -1,23 +1,50 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 
-// @desc    Mark attendance (employee - face verified)
-// @route   POST /api/attendance/mark
-// @access  Private/Employee
-const markAttendance = async (req, res) => {
-  try {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+// Helper: Get start and end of a day in UTC for Asia/Kolkata
+const getDayBoundsUTC = (dateInput) => {
+  // Create a date string in IST (Asia/Kolkata is UTC+5:30)
+  const now = dateInput || new Date();
+  // Get current date in IST
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(now.getTime() + istOffset);
+  const year = istDate.getUTCFullYear();
+  const month = istDate.getUTCMonth();
+  const day = istDate.getUTCDate();
 
-    // Check if already marked today
+  // Start of day in IST = midnight IST = 18:30 previous day UTC
+  const startIST = new Date(Date.UTC(year, month, day) - istOffset);
+  const endIST = new Date(startIST.getTime() + 24 * 60 * 60 * 1000);
+  return { start: startIST, end: endIST, dateLabel: `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` };
+};
+
+// Helper: Format UTC date to IST string
+const formatToIST = (date) => {
+  if (!date) return null;
+  return new Date(date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+};
+
+// @desc    Sign in with face verification (employee)
+// @route   POST /api/attendance/sign-in
+// @access  Private/Employee
+const signIn = async (req, res) => {
+  try {
+    const { start, end, dateLabel } = getDayBoundsUTC();
+
+    // Check if already signed in today
     const existing = await Attendance.findOne({
       employeeId: req.user._id,
-      date: today,
+      date: { $gte: start, $lt: end },
     });
 
     if (existing) {
       return res.status(400).json({
-        message: 'Attendance already marked for today',
-        attendance: existing,
+        message: 'Already signed in for today',
+        attendance: {
+          ...existing.toObject(),
+          checkInTimeIST: formatToIST(existing.checkInTime),
+          checkOutTimeIST: formatToIST(existing.checkOutTime),
+        },
       });
     }
 
@@ -25,18 +52,68 @@ const markAttendance = async (req, res) => {
 
     const attendance = await Attendance.create({
       employeeId: req.user._id,
-      date: today,
+      date: start, // Store the start of the IST day as UTC Date
       status: 'present',
-      checkInTime: new Date(),
+      checkInTime: new Date(), // Current UTC time
       faceVerified: faceVerified || false,
     });
 
     res.status(201).json({
-      message: 'Attendance marked successfully',
-      attendance,
+      message: 'Signed in successfully',
+      attendance: {
+        ...attendance.toObject(),
+        checkInTimeIST: formatToIST(attendance.checkInTime),
+      },
     });
   } catch (err) {
-    console.error('Attendance error:', err);
+    console.error('Sign-in error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Sign out with face verification (employee)
+// @route   POST /api/attendance/sign-out
+// @access  Private/Employee
+const signOut = async (req, res) => {
+  try {
+    const { start, end } = getDayBoundsUTC();
+
+    const attendance = await Attendance.findOne({
+      employeeId: req.user._id,
+      date: { $gte: start, $lt: end },
+    });
+
+    if (!attendance) {
+      return res.status(400).json({ message: 'You have not signed in today. Please sign in first.' });
+    }
+
+    if (attendance.checkOutTime) {
+      return res.status(400).json({
+        message: 'Already signed out for today',
+        attendance: {
+          ...attendance.toObject(),
+          checkInTimeIST: formatToIST(attendance.checkInTime),
+          checkOutTimeIST: formatToIST(attendance.checkOutTime),
+        },
+      });
+    }
+
+    const { faceVerified } = req.body;
+
+    attendance.checkOutTime = new Date(); // Current UTC time
+    attendance.signOutFaceVerified = faceVerified || false;
+    await attendance.save();
+
+    res.json({
+      message: 'Signed out successfully',
+      attendance: {
+        ...attendance.toObject(),
+        checkInTimeIST: formatToIST(attendance.checkInTime),
+        checkOutTimeIST: formatToIST(attendance.checkOutTime),
+      },
+    });
+  } catch (err) {
+    console.error('Sign-out error:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -46,9 +123,17 @@ const markAttendance = async (req, res) => {
 // @access  Private/Employee
 const getMyAttendance = async (req, res) => {
   try {
-    const attendance = await Attendance.find({ employeeId: req.user._id })
+    const records = await Attendance.find({ employeeId: req.user._id })
       .sort({ date: -1 })
-      .limit(60); // Last 60 records
+      .limit(60);
+
+    const attendance = records.map((r) => ({
+      ...r.toObject(),
+      checkInTimeIST: formatToIST(r.checkInTime),
+      checkOutTimeIST: formatToIST(r.checkOutTime),
+      dateIST: formatToIST(r.date),
+    }));
+
     res.json(attendance);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -60,15 +145,25 @@ const getMyAttendance = async (req, res) => {
 // @access  Private/Employee
 const checkTodayAttendance = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const { start, end } = getDayBoundsUTC();
     const attendance = await Attendance.findOne({
       employeeId: req.user._id,
-      date: today,
+      date: { $gte: start, $lt: end },
     });
-    res.json({
-      markedToday: !!attendance,
-      attendance: attendance || null,
-    });
+
+    if (attendance) {
+      res.json({
+        signedIn: true,
+        signedOut: !!attendance.checkOutTime,
+        attendance: {
+          ...attendance.toObject(),
+          checkInTimeIST: formatToIST(attendance.checkInTime),
+          checkOutTimeIST: formatToIST(attendance.checkOutTime),
+        },
+      });
+    } else {
+      res.json({ signedIn: false, signedOut: false, attendance: null });
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -82,12 +177,22 @@ const getAllAttendance = async (req, res) => {
     const { date } = req.query;
     const filter = {};
     if (date) {
-      filter.date = date;
+      // Parse the date string as IST day and find UTC bounds
+      const d = new Date(date + 'T00:00:00+05:30');
+      const end = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+      filter.date = { $gte: d, $lt: end };
     }
 
-    const attendance = await Attendance.find(filter)
+    const records = await Attendance.find(filter)
       .populate('employeeId', 'name email employeeId department')
       .sort({ date: -1, createdAt: -1 });
+
+    const attendance = records.map((r) => ({
+      ...r.toObject(),
+      checkInTimeIST: formatToIST(r.checkInTime),
+      checkOutTimeIST: formatToIST(r.checkOutTime),
+      dateIST: formatToIST(r.date),
+    }));
 
     res.json(attendance);
   } catch (err) {
@@ -100,30 +205,43 @@ const getAllAttendance = async (req, res) => {
 // @access  Private/Admin
 const getDailyAttendance = async (req, res) => {
   try {
-    const date = req.query.date || new Date().toISOString().split('T')[0];
+    let dayBounds;
+    if (req.query.date) {
+      const d = new Date(req.query.date + 'T00:00:00+05:30');
+      const end = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+      dayBounds = { start: d, end, dateLabel: req.query.date };
+    } else {
+      dayBounds = getDayBoundsUTC();
+    }
 
-    // Get all approved employees
     const totalEmployees = await User.countDocuments({ role: 'employee', status: 'approved' });
 
-    // Get attendance for the specific date
-    const present = await Attendance.find({ date, status: 'present' })
-      .populate('employeeId', 'name email employeeId department');
+    const present = await Attendance.find({
+      date: { $gte: dayBounds.start, $lt: dayBounds.end },
+      status: 'present',
+    }).populate('employeeId', 'name email employeeId department');
 
-    const presentIds = present.map(a => a.employeeId?._id?.toString()).filter(Boolean);
+    const presentIds = present.map((a) => a.employeeId?._id?.toString()).filter(Boolean);
 
-    // Get absent employees (approved employees who didn't mark attendance)
     const absentEmployees = await User.find({
       role: 'employee',
       status: 'approved',
       _id: { $nin: presentIds },
     }).select('name email employeeId department');
 
+    // Add IST formatting
+    const presentFormatted = present.map((r) => ({
+      ...r.toObject(),
+      checkInTimeIST: formatToIST(r.checkInTime),
+      checkOutTimeIST: formatToIST(r.checkOutTime),
+    }));
+
     res.json({
-      date,
+      date: dayBounds.dateLabel,
       totalEmployees,
       presentCount: present.length,
       absentCount: absentEmployees.length,
-      present,
+      present: presentFormatted,
       absent: absentEmployees,
     });
   } catch (err) {
@@ -136,23 +254,29 @@ const getDailyAttendance = async (req, res) => {
 // @access  Private/Admin
 const getAttendanceStats = async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const { start, end, dateLabel } = getDayBoundsUTC();
     const totalEmployees = await User.countDocuments({ role: 'employee', status: 'approved' });
-    const presentToday = await Attendance.countDocuments({ date: today, status: 'present' });
+    const presentToday = await Attendance.countDocuments({
+      date: { $gte: start, $lt: end },
+      status: 'present',
+    });
 
     // Last 7 days trend
     const trend = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const count = await Attendance.countDocuments({ date: dateStr, status: 'present' });
-      trend.push({ date: dateStr, present: count, total: totalEmployees });
+      const db = getDayBoundsUTC(d);
+      const count = await Attendance.countDocuments({
+        date: { $gte: db.start, $lt: db.end },
+        status: 'present',
+      });
+      trend.push({ date: db.dateLabel, present: count, total: totalEmployees });
     }
 
     res.json({
       today: {
-        date: today,
+        date: dateLabel,
         present: presentToday,
         absent: totalEmployees - presentToday,
         total: totalEmployees,
@@ -200,7 +324,8 @@ const getFaceDescriptor = async (req, res) => {
 };
 
 module.exports = {
-  markAttendance,
+  signIn,
+  signOut,
   getMyAttendance,
   checkTodayAttendance,
   getAllAttendance,

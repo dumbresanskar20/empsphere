@@ -8,7 +8,7 @@ const attendanceSchema = new mongoose.Schema(
       required: true,
     },
     date: {
-      type: String, // Format: YYYY-MM-DD for easy day-level uniqueness
+      type: Date, // Store as UTC Date object, not string
       required: true,
     },
     status: {
@@ -17,9 +17,16 @@ const attendanceSchema = new mongoose.Schema(
       default: 'present',
     },
     checkInTime: {
-      type: Date,
+      type: Date, // UTC Date object
+    },
+    checkOutTime: {
+      type: Date, // UTC Date object — recorded on sign-out
     },
     faceVerified: {
+      type: Boolean,
+      default: false,
+    },
+    signOutFaceVerified: {
       type: Boolean,
       default: false,
     },
@@ -28,6 +35,8 @@ const attendanceSchema = new mongoose.Schema(
 );
 
 // Ensure one attendance record per employee per day
-attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
+// We use a compound index; uniqueness is enforced at the controller level
+// by checking the date range for the day
+attendanceSchema.index({ employeeId: 1, date: 1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

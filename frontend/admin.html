@@ -577,7 +577,7 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="main-sidebar">
-    <div class="brand">🏢 <span>EmpSphere</span></div>
+    <div class="brand" style="cursor:pointer;" onclick="switchSection('dashboard')">🏢 <span>EmpSphere</span></div>
     <div class="nav-item active" onclick="switchSection('dashboard')">📊 Dashboard</div>
     <div class="nav-item" onclick="switchSection('employees')">👥 Employees</div>
     <div class="nav-item" onclick="switchSection('tasks')">📋 Tasks</div>
@@ -586,6 +586,7 @@
     <div class="nav-item" onclick="switchSection('leaves')">📅 Leaves</div>
     <div class="nav-item" onclick="switchSection('salaries')">💰 Salaries</div>
     <div class="nav-item" onclick="switchSection('deductions')">📉 Deductions</div>
+    <div class="nav-item" onclick="switchSection('resignations')">📝 Resignations</div>
     <div class="nav-item" onclick="switchSection('settings')">⚙️ Settings</div>
     <div class="logout-btn" onclick="logout()">🚪 Logout</div>
   </aside>
@@ -767,6 +768,10 @@
                 <th>Emp ID</th>
                 <th>Name</th>
                 <th>Month</th>
+                <th>Basic (₹)</th>
+                <th>Bonus (₹)</th>
+                <th>Leave Ded.</th>
+                <th>Penalty Ded.</th>
                 <th>Net Salary</th>
                 <th>Actions</th>
               </tr>
@@ -822,7 +827,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
         <div class="table-container">
           <div class="table-header"><h3 style="color:var(--success)">✅ Present</h3></div>
-          <div class="table-scroll-wrapper"><table><thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Time</th></tr></thead><tbody id="att-present-tbody"></tbody></table></div>
+          <div class="table-scroll-wrapper"><table><thead><tr><th>ID</th><th>Name</th><th>Dept</th><th>Sign In</th><th>Sign Out</th><th>Face ✓</th></tr></thead><tbody id="att-present-tbody"></tbody></table></div>
         </div>
         <div class="table-container">
           <div class="table-header"><h3 style="color:var(--danger)">❌ Absent</h3></div>
@@ -839,6 +844,19 @@
           <table>
             <thead><tr><th>Emp ID</th><th>Name</th><th>Month</th><th>Deductions (₹)</th><th>Notes</th></tr></thead>
             <tbody id="deduction-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resignations Section -->
+    <div id="resignations-section" class="section">
+      <div class="table-container">
+        <div class="table-header"><h3>Resignation Management</h3></div>
+        <div class="table-scroll-wrapper">
+          <table>
+            <thead><tr><th>Emp ID</th><th>Name</th><th>Reason</th><th>Letter</th><th>Status</th><th>Notice Period</th><th>Actions</th></tr></thead>
+            <tbody id="resignation-table-body"></tbody>
           </table>
         </div>
       </div>
@@ -933,14 +951,11 @@
           <input type="number" id="salaryBonus" value="0" min="0">
         </div>
         <div class="form-group">
-          <label>Deductions (₹)</label>
-          <input type="number" id="salaryDeductions" value="0" min="0">
-        </div>
-        <div class="form-group">
           <label>Notes</label>
           <textarea id="salaryNotes" rows="2"></textarea>
         </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Save Salary</button>
+        <p style="font-size:0.85rem;color:var(--text2);margin-bottom:1rem;">💡 Leave deductions (₹500/excess day) and task penalties are auto-calculated.</p>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Generate Salary</button>
       </form>
     </div>
   </div>
@@ -1098,6 +1113,7 @@
         'leaves': 'Leave Management',
         'salaries': 'Salary Management',
         'deductions': 'Salary Deduction Logs',
+        'resignations': 'Resignation Management',
         'settings': 'System Settings'
       };
       document.getElementById('page-title').textContent = titles[sectionId] || sectionId;
@@ -1114,6 +1130,7 @@
       if (sectionId === 'leaves') loadLeaves();
       if (sectionId === 'salaries') loadSalaries();
       if (sectionId === 'deductions') loadDeductions();
+      if (sectionId === 'resignations') loadResignations();
     }
 
     // Theme Management
@@ -1296,6 +1313,7 @@
                 <button class="btn btn-success" onclick="updateEmpStatus('${emp._id}', 'approved')">Approve</button>
                 <button class="btn btn-danger" onclick="updateEmpStatus('${emp._id}', 'rejected')">Reject</button>
               ` : ''}
+              <button class="btn btn-danger" onclick="deleteEmployee('${emp._id}')" title="Delete employee and all data">🗑️</button>
             </div>
           </td>
         </tr>
@@ -1314,6 +1332,13 @@
         method: 'PUT',
         body: JSON.stringify({ status })
       });
+      loadEmployees();
+      loadDashboardData();
+    }
+
+    async function deleteEmployee(id) {
+      if (!confirm('Are you sure? This will permanently delete this employee and ALL their data (leaves, salaries, tasks, attendance).')) return;
+      await apiCall(`/api/admin/employees/${id}`, { method: 'DELETE' });
       loadEmployees();
       loadDashboardData();
     }
@@ -1365,11 +1390,11 @@
           <td>${leave.employeeId}</td>
           <td>${leave.employeeName}</td>
           <td style="text-transform: capitalize;">${leave.leaveType}</td>
-          <td>${new Date(leave.fromDate).toLocaleDateString()} to ${new Date(leave.toDate).toLocaleDateString()}</td>
-          <td><span class="badge ${leave.status}">${leave.status}</span></td>
+          <td>${new Date(leave.fromDate).toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata'})} to ${new Date(leave.toDate).toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata'})}</td>
+          <td><span class="badge ${leave.status}">${leave.status}</span>${leave.isLocked ? ' <span style="font-size:0.7rem;color:var(--text2)">🔒</span>' : ''}</td>
           <td>
             <div class="action-btns">
-              <button class="btn btn-primary" onclick="reviewLeave('${leave._id}')">Review</button>
+              ${leave.isLocked ? '<span style="font-size:0.8rem;color:var(--text2)">Decision Locked</span>' : `<button class="btn btn-primary" onclick="reviewLeave('${leave._id}')">Review</button>`}
             </div>
           </td>
         </tr>
@@ -1425,9 +1450,16 @@
           <td>${s.employeeId}</td>
           <td>${s.employeeName}</td>
           <td>${s.month}</td>
-          <td style="font-weight:bold; color:var(--success)">₹${s.netSalary.toLocaleString()}</td>
+          <td>₹${(s.basic||0).toLocaleString()}</td>
+          <td style="color:var(--success)">₹${(s.bonus||0).toLocaleString()}</td>
+          <td style="color:${(s.leaveDeductions||0) > 0 ? 'var(--danger)' : 'var(--text2)'}">₹${(s.leaveDeductions||0).toLocaleString()}</td>
+          <td style="color:${(s.penaltyDeductions||0) > 0 ? 'var(--danger)' : 'var(--text2)'}">₹${(s.penaltyDeductions||0).toLocaleString()}</td>
+          <td style="font-weight:bold; color:var(--success)">₹${(s.netSalary||0).toLocaleString()}</td>
           <td>
-            <button class="btn btn-primary" onclick="editSalary('${s._id}')">View/Edit</button>
+            <div class="action-btns">
+              <button class="btn btn-primary" onclick="viewSalarySlip('${s._id}')">View Slip</button>
+              <button class="btn btn-success" onclick="downloadSalarySlip('${s._id}')">📥</button>
+            </div>
           </td>
         </tr>
       `).join('');
@@ -1446,7 +1478,6 @@
         month: document.getElementById('salaryMonth').value,
         basic: Number(document.getElementById('salaryBasic').value),
         bonus: Number(document.getElementById('salaryBonus').value),
-        deductions: Number(document.getElementById('salaryDeductions').value),
         notes: document.getElementById('salaryNotes').value
       };
       await apiCall('/api/salaries', {
@@ -1457,9 +1488,63 @@
       loadSalaries();
     }
 
-    function editSalary(id) {
-      // For simplicity, just alert that they can add a new record for the same month to overwrite
-      alert("To update, click '+ Add/Update Salary' and submit for the same employee and month.");
+    async function viewSalarySlip(id) {
+      try {
+        const s = await apiCall(`/api/salaries/${id}/slip`);
+        const breakdownHtml = s.deductionBreakdown && s.deductionBreakdown.length > 0
+          ? s.deductionBreakdown.map((d, i) => `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.9rem;"><span>${i+1}. ${d.reason}</span><span style="color:var(--danger);font-weight:600;">−₹${d.amount.toLocaleString()}</span></div>`).join('')
+          : '<p style="color:var(--text2)">No deductions applied.</p>';
+        document.getElementById('empModalTitle').textContent = 'Salary Slip';
+        document.getElementById('empModalBody').innerHTML = `
+          <div style="text-align:center;margin-bottom:1.5rem;">
+            <h4 style="color:var(--accent);">🏢 EmpSphere — Salary Slip</h4>
+            <p style="color:var(--text2);">${s.employeeName} (${s.employeeId}) • ${s.month}</p>
+          </div>
+          <div style="background:var(--bg2);padding:1.2rem;border-radius:12px;border:1px solid var(--border);margin-bottom:1rem;">
+            <h5 style="margin-bottom:0.8rem;color:var(--success);">💰 Earnings</h5>
+            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;"><span>Basic Salary</span><span style="font-weight:600;">₹${s.basic.toLocaleString()}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;"><span>Bonus</span><span style="font-weight:600;color:var(--success);">₹${s.bonus.toLocaleString()}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-top:1px solid var(--border);margin-top:0.4rem;font-weight:700;"><span>Gross Earnings</span><span>₹${(s.basic + s.bonus).toLocaleString()}</span></div>
+          </div>
+          <div style="background:var(--bg2);padding:1.2rem;border-radius:12px;border:1px solid var(--border);margin-bottom:1rem;">
+            <h5 style="margin-bottom:0.8rem;color:var(--danger);">📉 Deductions</h5>
+            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;"><span>Leave Deductions</span><span style="color:var(--danger);">−₹${(s.leaveDeductions||0).toLocaleString()}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:0.4rem 0;"><span>Penalty Deductions</span><span style="color:var(--danger);">−₹${(s.penaltyDeductions||0).toLocaleString()}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:0.6rem 0;border-top:1px solid var(--border);margin-top:0.4rem;font-weight:700;"><span>Total Deductions</span><span style="color:var(--danger);">−₹${(s.totalDeductions||0).toLocaleString()}</span></div>
+          </div>
+          ${s.deductionBreakdown && s.deductionBreakdown.length > 0 ? `<div style="background:rgba(239,68,68,0.05);padding:1rem;border-radius:12px;border:1px solid rgba(239,68,68,0.15);margin-bottom:1rem;"><h5 style="margin-bottom:0.5rem;">Deduction Breakdown</h5>${breakdownHtml}</div>` : ''}
+          <div style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.1));padding:1.2rem;border-radius:12px;border:1px solid var(--accent);text-align:center;">
+            <span style="font-size:0.9rem;color:var(--text2);">NET SALARY</span><br>
+            <span style="font-size:2rem;font-weight:800;color:var(--success);">₹${s.netSalary.toLocaleString()}</span>
+          </div>
+          <div style="text-align:center;margin-top:1rem;">
+            <button class="btn btn-primary" onclick="downloadSalarySlip('${id}')">📥 Download .txt Slip</button>
+          </div>
+          ${s.notes ? `<p style="margin-top:1rem;font-size:0.85rem;color:var(--text2);"><strong>Note:</strong> ${s.notes}</p>` : ''}
+        `;
+        openModal('empModal');
+      } catch (e) { console.error(e); }
+    }
+
+    async function downloadSalarySlip(id) {
+      try {
+        const res = await fetch(`/api/salaries/${id}/download`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Download failed');
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        // The backend sets Content-Disposition, but we can also just guess a name:
+        a.download = `Salary_Slip_${id}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } catch (e) {
+        alert(e.message);
+      }
     }
 
     // ── Departments Management ──────────────────────────────────────────────
@@ -1544,14 +1629,18 @@
         const empName = emp ? `${emp.name} (${emp.employeeId})` : 'Unknown';
         const due = new Date(t.dueDate);
         const statusColors = { pending: 'pending', completed: 'approved', overdue: 'rejected' };
+        const hasDoc = t.documentPath && t.documentPath.length > 0;
+        const lockLabel = t.isLocked ? '<span style="font-size:0.7rem;color:var(--text2)"> 🔒</span>' : '';
         return `<tr>
           <td style="font-weight:600;">${t.title}</td>
           <td>${empName}</td>
-          <td>${due.toLocaleString()}</td>
+          <td>${due.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</td>
           <td>${t.penaltyAmount > 0 ? '₹' + t.penaltyAmount.toLocaleString() : '—'}</td>
-          <td><span class="badge ${statusColors[t.status]}">${t.status}${t.isPenaltyApplied ? ' (penalty applied)' : ''}</span></td>
+          <td><span class="badge ${statusColors[t.status]}">${t.status}${t.isPenaltyApplied ? ' (penalty)' : ''}</span>${t.adminDecision ? ` <span class="badge ${t.adminDecision==='complete'?'approved':'rejected'}">${t.adminDecision}</span>` : ''}${lockLabel}</td>
           <td>
             <div class="action-btns">
+              ${hasDoc ? `<a href="${t.documentPath}" target="_blank" class="btn btn-success" style="text-decoration:none;">📄 View Doc</a>` : ''}
+              ${!t.isLocked && hasDoc ? `<button class="btn btn-success" onclick="reviewTaskAdmin('${t._id}','complete')">✅ Complete</button><button class="btn btn-danger" onclick="reviewTaskAdmin('${t._id}','not_complete')">❌ Not Complete</button>` : ''}
               <button class="btn btn-danger" onclick="deleteTask('${t._id}')">Delete</button>
             </div>
           </td>
@@ -1594,6 +1683,12 @@
       loadTasks();
     }
 
+    async function reviewTaskAdmin(id, decision) {
+      if (!confirm(`Mark this task as "${decision}"? This action cannot be undone.`)) return;
+      await apiCall(`/api/tasks/${id}/review`, { method: 'PUT', body: JSON.stringify({ decision }) });
+      loadTasks();
+    }
+
     // ── Attendance Monitoring ──────────────────────────────────────────
     async function loadAttendanceSection() {
       document.getElementById('attendance-date').value = new Date().toISOString().split('T')[0];
@@ -1627,11 +1722,11 @@
       date = date || new Date().toISOString().split('T')[0];
       try {
         const data = await apiCall(`/api/attendance/daily?date=${date}`);
-        // Present table
+        // Present table with sign-in/sign-out times
         document.getElementById('att-present-tbody').innerHTML = data.present.map(a => {
           const e = a.employeeId;
-          return `<tr><td>${e?.employeeId || '—'}</td><td>${e?.name || '—'}</td><td>${e?.department || '—'}</td><td>${a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString() : '—'}</td></tr>`;
-        }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text2)">None</td></tr>';
+          return `<tr><td>${e?.employeeId || '—'}</td><td>${e?.name || '—'}</td><td>${e?.department || '—'}</td><td>${a.checkInTimeIST || '—'}</td><td>${a.checkOutTimeIST || '<em style="color:var(--warning)">Still in</em>'}</td><td>${a.faceVerified ? '✅' : '❌'}</td></tr>`;
+        }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text2)">None</td></tr>';
 
         // Absent table
         document.getElementById('att-absent-tbody').innerHTML = data.absent.map(e =>
@@ -1675,6 +1770,70 @@
       // Pre-load employees for task assignment dropdown
       loadEmployees();
     })();
+
+    // ── Resignation Management ──────────────────────────────────────────
+    async function loadResignations() {
+      try {
+        const resignations = await apiCall('/api/resignations');
+        const tbody = document.getElementById('resignation-table-body');
+        if (!resignations.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:2rem;">No resignation requests.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = resignations.map(r => {
+          const emp = r.userId || {};
+          let noticeInfo = '—';
+          if (r.status === 'approved' && !r.noticeCancelled && !r.isCompleted) {
+            const end = new Date(r.noticePeriodEnd);
+            const now = new Date();
+            const daysLeft = Math.max(0, Math.ceil((end - now) / (1000*60*60*24)));
+            noticeInfo = `${daysLeft} days left<br><small>${end.toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata'})}</small>`;
+          } else if (r.noticeCancelled) {
+            noticeInfo = '<span style="color:var(--warning)">Cancelled</span>';
+          } else if (r.isCompleted) {
+            noticeInfo = '<span style="color:var(--success)">Completed</span>';
+          }
+          const statusColors = {pending:'pending',approved:'approved',rejected:'rejected'};
+          return `<tr>
+            <td>${r.employeeId}</td>
+            <td>${r.employeeName}</td>
+            <td style="max-width:200px;white-space:normal;">${r.reason}</td>
+            <td>${r.letterPath ? `<a href="${r.letterPath}" target="_blank" class="btn btn-primary" style="text-decoration:none;font-size:0.8rem;">📄 View</a>` : '—'}</td>
+            <td><span class="badge ${statusColors[r.status]}">${r.status}</span></td>
+            <td>${noticeInfo}</td>
+            <td>
+              <div class="action-btns">
+                ${r.status === 'pending' ? `
+                  <button class="btn btn-success" onclick="approveResignation('${r._id}')">Approve</button>
+                  <button class="btn btn-danger" onclick="rejectResignation('${r._id}')">Reject</button>
+                ` : ''}
+                ${r.status === 'approved' && !r.noticeCancelled && !r.isCompleted ? `
+                  <button class="btn btn-danger" onclick="cancelNotice('${r._id}')">Cancel Notice</button>
+                ` : ''}
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function approveResignation(id) {
+      if (!confirm('Approve this resignation? A 30-day notice period will start.')) return;
+      await apiCall(`/api/resignations/${id}/approve`, { method: 'PUT' });
+      loadResignations();
+    }
+
+    async function rejectResignation(id) {
+      if (!confirm('Reject this resignation?')) return;
+      await apiCall(`/api/resignations/${id}/reject`, { method: 'PUT' });
+      loadResignations();
+    }
+
+    async function cancelNotice(id) {
+      if (!confirm('Cancel the notice period? The employee will remain active.')) return;
+      await apiCall(`/api/resignations/${id}/cancel-notice`, { method: 'PUT' });
+      loadResignations();
+    }
   </script>
 </body>
 

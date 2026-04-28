@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -33,6 +36,7 @@ app.use('/api/departments', require('./routes/departmentRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
+app.use('/api/resignations', require('./routes/resignationRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api', require('./routes/fileRoutes')); // GridFS routes (/api/upload, /api/files)
 

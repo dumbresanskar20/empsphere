@@ -13,16 +13,16 @@ const applyLeave = async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
-    
+
     let prescriptionInfo = {};
     if (leaveType === 'sick' && req.file) {
       const uploadedFile = await uploadToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype, {
         type: 'prescription',
-        employeeId: user.employeeId
+        employeeId: user.employeeId,
       });
       prescriptionInfo = {
         prescriptionPath: uploadedFile.path,
-        prescriptionFilename: uploadedFile.filename
+        prescriptionFilename: uploadedFile.filename,
       };
     } else if (leaveType === 'sick' && !req.file) {
       return res.status(400).json({ message: 'Prescription is required for sick leave' });
@@ -36,7 +36,7 @@ const applyLeave = async (req, res) => {
       fromDate: new Date(fromDate),
       toDate: new Date(toDate),
       reason,
-      ...prescriptionInfo
+      ...prescriptionInfo,
     });
 
     res.status(201).json(leave);
@@ -69,24 +69,32 @@ const getAllLeaves = async (req, res) => {
   }
 };
 
-// @desc    Update leave status (admin)
+// @desc    Update leave status (admin) — LOCKED after first decision
 // @route   PUT /api/leaves/:id/status
 // @access  Private/Admin
 const updateLeaveStatus = async (req, res) => {
   try {
     const { status, adminComment } = req.body;
-    if (!['approved', 'rejected', 'pending'].includes(status)) {
-      return res.status(400).json({ message: 'Invalid status' });
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be approved or rejected.' });
     }
 
     const leave = await Leave.findById(req.params.id);
     if (!leave) return res.status(404).json({ message: 'Leave not found' });
 
+    // Prevent modification of locked decisions
+    if (leave.isLocked) {
+      return res.status(403).json({
+        message: 'This leave decision has already been taken and cannot be modified.',
+      });
+    }
+
     leave.status = status;
+    leave.isLocked = true; // Lock after decision
     if (adminComment !== undefined) leave.adminComment = adminComment;
     await leave.save();
 
-    res.json(leave);
+    res.json({ message: `Leave ${status} and locked`, leave });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -102,6 +110,18 @@ const getMyLeaveStats = async (req, res) => {
     const rejected = await Leave.countDocuments({ userId: req.user._id, status: 'rejected' });
     const pending = await Leave.countDocuments({ userId: req.user._id, status: 'pending' });
 
+    // Calculate total approved leave days for annual limit
+    const approvedLeaves = await Leave.find({ userId: req.user._id, status: 'approved' });
+    let totalApprovedDays = 0;
+    for (const l of approvedLeaves) {
+      const diff = (l.toDate - l.fromDate) / (1000 * 60 * 60 * 24);
+      totalApprovedDays += Math.ceil(diff) + 1;
+    }
+
+    const annualLimit = 5;
+    const excessDays = Math.max(0, totalApprovedDays - annualLimit);
+    const leaveDeduction = excessDays * 500; // ₹500 per extra day
+
     // Monthly trend
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -116,7 +136,17 @@ const getMyLeaveStats = async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]);
 
-    res.json({ total, approved, rejected, pending, trend });
+    res.json({
+      total,
+      approved,
+      rejected,
+      pending,
+      totalApprovedDays,
+      annualLimit,
+      excessDays,
+      leaveDeduction,
+      trend,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

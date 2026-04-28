@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const {
-  markAttendance,
+  signIn,
+  signOut,
   getMyAttendance,
   checkTodayAttendance,
   getAllAttendance,
@@ -13,7 +14,8 @@ const {
 } = require('../controllers/attendanceController');
 
 // Employee routes
-router.post('/mark', protect, markAttendance);
+router.post('/sign-in', protect, signIn);
+router.post('/sign-out', protect, signOut);
 router.get('/my', protect, getMyAttendance);
 router.get('/today', protect, checkTodayAttendance);
 router.put('/face-descriptor', protect, storeFaceDescriptor);

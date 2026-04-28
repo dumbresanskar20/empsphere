@@ -42,6 +42,29 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Task document upload by employee
+    documentPath: {
+      type: String,
+      default: '',
+    },
+    documentFilename: {
+      type: String,
+      default: '',
+    },
+    documentOriginalName: {
+      type: String,
+      default: '',
+    },
+    // Admin review — locked once decided
+    adminDecision: {
+      type: String,
+      enum: ['complete', 'not_complete', ''],
+      default: '',
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

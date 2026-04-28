@@ -53,17 +53,33 @@ const updateEmployeeStatus = async (req, res) => {
   }
 };
 
-// @desc    Delete employee
+// @desc    Delete employee with cascading cleanup
 // @route   DELETE /api/admin/employees/:id
 // @access  Private/Admin
 const deleteEmployee = async (req, res) => {
   try {
+    const Leave = require('../models/Leave');
+    const Salary = require('../models/Salary');
+    const Task = require('../models/Task');
+    const Attendance = require('../models/Attendance');
+    const Notification = require('../models/Notification');
+    const Resignation = require('../models/Resignation');
+
     const emp = await User.findById(req.params.id);
     if (!emp || emp.role !== 'employee') {
       return res.status(404).json({ message: 'Employee not found' });
     }
+
+    // Cascading delete all related data
+    await Leave.deleteMany({ userId: emp._id });
+    await Salary.deleteMany({ userId: emp._id });
+    await Task.deleteMany({ assignedEmployee: emp._id });
+    await Attendance.deleteMany({ employeeId: emp._id });
+    await Notification.deleteMany({ userId: emp._id });
+    await Resignation.deleteMany({ userId: emp._id });
+
     await emp.deleteOne();
-    res.json({ message: 'Employee deleted successfully' });
+    res.json({ message: 'Employee and all related data deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -78,6 +94,7 @@ const getAdminStats = async (req, res) => {
     const Salary = require('../models/Salary');
     const Task = require('../models/Task');
     const Attendance = require('../models/Attendance');
+    const Resignation = require('../models/Resignation');
 
     const totalEmployees = await User.countDocuments({ role: 'employee' });
     const approvedCount = await User.countDocuments({ role: 'employee', status: 'approved' });
@@ -95,9 +112,26 @@ const getAdminStats = async (req, res) => {
     const completedTasks = await Task.countDocuments({ status: 'completed' });
     const overdueTasks = await Task.countDocuments({ status: 'overdue' });
 
-    // Today's attendance
-    const today = new Date().toISOString().split('T')[0];
-    const presentToday = await Attendance.countDocuments({ date: today, status: 'present' });
+    // Resignation stats
+    const pendingResignations = await Resignation.countDocuments({ status: 'pending' });
+    const activeNotices = await Resignation.countDocuments({
+      status: 'approved',
+      noticeCancelled: false,
+      isCompleted: false,
+    });
+
+    // Today's attendance (using UTC day bounds for IST)
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + istOffset);
+    const year = nowIST.getUTCFullYear();
+    const month = nowIST.getUTCMonth();
+    const day = nowIST.getUTCDate();
+    const todayStart = new Date(Date.UTC(year, month, day) - istOffset);
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const presentToday = await Attendance.countDocuments({
+      date: { $gte: todayStart, $lt: todayEnd },
+      status: 'present',
+    });
 
     // City distribution
     const cityData = await User.aggregate([
@@ -149,6 +183,7 @@ const getAdminStats = async (req, res) => {
       leaves: { total: totalLeaves, approved: approvedLeaves, pending: pendingLeaves, rejected: rejectedLeaves },
       tasks: { total: totalTasks, pending: pendingTasks, completed: completedTasks, overdue: overdueTasks },
       attendance: { presentToday, totalApproved: approvedCount },
+      resignations: { pending: pendingResignations, activeNotices },
       cityData,
       joinTrend,
       salaryData,

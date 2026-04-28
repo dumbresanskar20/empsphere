@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
     bloodGroup: { type: String, enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', ''] },
     department: { type: String, trim: true, default: '' },
     profileImage: { type: String, default: '' },
+    resignationStatus: {
+      type: String,
+      enum: ['none', 'pending', 'in_notice', 'resigned'],
+      default: 'none',
+    },
     faceDescriptor: {
       type: [Number], // face-api.js descriptor (128-dimensional Float32Array)
       default: [],

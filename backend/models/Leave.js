@@ -17,6 +17,7 @@ const leaveSchema = new mongoose.Schema(
     adminComment: { type: String, default: '' },
     prescriptionPath: { type: String },
     prescriptionFilename: { type: String },
+    isLocked: { type: Boolean, default: false }, // Lock after admin decision
   },
   { timestamps: true }
 );

@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const User = require('../models/User');
 const Salary = require('../models/Salary');
 const Notification = require('../models/Notification');
+const { uploadToGridFS } = require('../utils/gridfsHelper');
 
 // @desc    Create a new task and assign to employee
 // @route   POST /api/tasks
@@ -37,7 +38,7 @@ const createTask = async (req, res) => {
       userId: assignedEmployee,
       type: 'task_assigned',
       title: 'New Task Assigned',
-      message: `You have been assigned a new task: "${title}". Due by ${new Date(dueDate).toLocaleString()}.`,
+      message: `You have been assigned a new task: "${title}". Due by ${new Date(dueDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}.`,
       relatedId: task._id,
     });
 
@@ -68,8 +69,7 @@ const getAllTasks = async (req, res) => {
 // @access  Private/Employee
 const getMyTasks = async (req, res) => {
   try {
-    const tasks = await Task.find({ assignedEmployee: req.user._id })
-      .sort({ createdAt: -1 });
+    const tasks = await Task.find({ assignedEmployee: req.user._id }).sort({ createdAt: -1 });
     res.json(tasks);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -102,7 +102,7 @@ const completeTask = async (req, res) => {
     // Notify all admins about task completion
     const admins = await User.find({ role: 'admin' });
     const employee = await User.findById(req.user._id).select('name employeeId');
-    
+
     for (const admin of admins) {
       await Notification.create({
         userId: admin._id,
@@ -119,7 +119,101 @@ const completeTask = async (req, res) => {
   }
 };
 
-// @desc    Update task status (admin)
+// @desc    Upload task document (employee)
+// @route   PUT /api/tasks/:id/upload-document
+// @access  Private/Employee
+const uploadTaskDocument = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    if (task.assignedEmployee.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only upload documents for your own tasks' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file provided' });
+    }
+
+    const uploadedFile = await uploadToGridFS(req.file.buffer, req.file.originalname, req.file.mimetype, {
+      type: 'task_document',
+      taskId: task._id.toString(),
+    });
+
+    task.documentPath = uploadedFile.path;
+    task.documentFilename = uploadedFile.filename;
+    task.documentOriginalName = req.file.originalname;
+    task.adminDecision = undefined; // Clear previous decision so admin can review the new doc
+    await task.save();
+
+    // Notify admins
+    const admins = await User.find({ role: 'admin' });
+    const employee = await User.findById(req.user._id).select('name employeeId');
+    for (const admin of admins) {
+      await Notification.create({
+        userId: admin._id,
+        type: 'task_completed',
+        title: 'Task Document Uploaded',
+        message: `${employee.name} (${employee.employeeId}) uploaded a document for task: "${task.title}".`,
+        relatedId: task._id,
+      });
+    }
+
+    res.json({ message: 'Task document uploaded successfully', task });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Admin reviews task — marks complete or not_complete (LOCKED after)
+// @route   PUT /api/tasks/:id/review
+// @access  Private/Admin
+const reviewTask = async (req, res) => {
+  try {
+    const { decision } = req.body;
+    if (!['complete', 'not_complete'].includes(decision)) {
+      return res.status(400).json({ message: 'Decision must be "complete" or "not_complete"' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    if (task.isLocked) {
+      return res.status(403).json({ message: 'This task decision has already been taken and cannot be modified.' });
+    }
+
+    task.adminDecision = decision;
+    if (decision === 'complete') {
+      task.isLocked = true;
+      task.status = 'completed';
+      task.completedAt = new Date();
+    } else {
+      task.isLocked = false;
+      task.status = 'pending';
+      task.documentPath = '';
+      task.documentFilename = '';
+    }
+    await task.save();
+
+    // Notify employee
+    const employee = await User.findById(task.assignedEmployee).select('name employeeId');
+    if (employee) {
+      await Notification.create({
+        userId: task.assignedEmployee,
+        type: 'general',
+        title: `Task ${decision === 'complete' ? 'Approved' : 'Not Approved'}`,
+        message: `Admin has marked your task "${task.title}" as ${decision === 'complete' ? 'complete' : 'not complete'}.`,
+        relatedId: task._id,
+      });
+    }
+
+    res.json({ message: `Task marked as ${decision} and locked`, task });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// @desc    Update task status (admin) — legacy, still useful but respects lock
 // @route   PUT /api/tasks/:id/status
 // @access  Private/Admin
 const updateTaskStatus = async (req, res) => {
@@ -132,6 +226,10 @@ const updateTaskStatus = async (req, res) => {
     const task = await Task.findById(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
+    }
+
+    if (task.isLocked) {
+      return res.status(403).json({ message: 'This task decision is locked and cannot be modified.' });
     }
 
     task.status = status;
@@ -183,6 +281,8 @@ module.exports = {
   getAllTasks,
   getMyTasks,
   completeTask,
+  uploadTaskDocument,
+  reviewTask,
   updateTaskStatus,
   deleteTask,
   getTaskStats,
