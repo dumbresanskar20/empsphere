@@ -1470,7 +1470,7 @@
           return `<tr>
           <td style="font-weight:600;">${t.title}</td>
           <td style="font-size:0.85rem;color:var(--text2);max-width:200px;white-space:normal;">${t.description || '—'}</td>
-          <td>${new Date(t.dueDate).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</td>
+          <td>${new Date(t.dueDate).toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata'})}</td>
           <td>${t.penaltyAmount > 0 ? '₹' + t.penaltyAmount : '—'}</td>
           <td><span class="badge ${statusColors[t.status]}">${t.status}</span>${adminLabel}${lockLabel}</td>
           <td>${t.documentPath ? `<a href="${t.documentPath}" target="_blank" style="color:var(--accent)">📄 View</a>` : `<input type="file" onchange="uploadTaskDoc('${t._id}', this)" style="font-size:0.8rem;max-width:120px;">`}</td>
